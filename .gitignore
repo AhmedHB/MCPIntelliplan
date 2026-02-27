@@ -37,3 +37,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Cloud secrets
+MCPClient/env/cloud.env.properties
