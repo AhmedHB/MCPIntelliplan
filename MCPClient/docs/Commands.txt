@@ -1,0 +1,38 @@
+#Spring application
+
+mvn clean package
+
+mvn spring-boot:run -Dspring-boot.run.profiles=local
+
+mvn spring-boot:run -Dspring-boot.run.profiles=local \
+    -Dspring-boot.run.jvmArguments="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+
+
+mvn spring-boot:run -Dspring-boot.run.profiles=cloud
+
+mvn spring-boot:run -Dspring-boot.run.profiles=cloud \
+    -Dspring-boot.run.jvmArguments="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+
+//-----------------------------------------------------
+
+mvn spring-boot:run -Plocal
+
+mvn spring-boot:run -Plocal -Dfile.encoding=UTF-8
+
+mvn spring-boot:run -Plocal \
+-Dspring-boot.run.jvmArguments="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+
+
+mvn spring-boot:run -Pcloud
+
+mvn spring-boot:run -Pcloud \
+-Dspring-boot.run.jvmArguments="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+
+
+//-----------------------------------------------------
+
+mvn spring-boot:run -Plocal \
+  -Dspring-boot.run.jvmArguments="--enable-native-access=ALL-UNNAMED"
+
+mvn spring-boot:run -Pcloud \
+  -Dspring-boot.run.jvmArguments="--enable-native-access=ALL-UNNAMED"

@@ -1,0 +1,11 @@
+customer_id,customer_name,region,required_services,risk_profile
+CUST_WAREHOUSE_1,Nordic Logistics Center,SE-STH,ForkliftOperator,HIGH
+CUST_WAREHOUSE_2,E-Com Fulfillment Hub,SE-MAL,Picker,LOW
+CUST_WAREHOUSE_3,Gothenburg Distribution,SE-GOT,ForkliftOperator,HIGH
+CUST_WAREHOUSE_4,Uppsala Inventory Hub,SE-LIN,ForkliftOperator,HIGH
+CUST_WAREHOUSE_5,Stockholm Pack & Ship,SE-UPP,ForkliftOperator,LOW
+CUST_WAREHOUSE_6,Malmö Crossdock,SE-STH,Picker,LOW
+CUST_WAREHOUSE_7,Linköping Returns Center,SE-LIN,InventoryControl,LOW
+CUST_WAREHOUSE_8,Sweden Cold Storage,SE-LIN,Picker,HIGH
+CUST_WAREHOUSE_9,Central Sortation Facility,SE-LIN,TeamLead,LOW
+CUST_WAREHOUSE_10,Last-Mile Consolidation Point,SE-UPP,InventoryControl,MEDIUM

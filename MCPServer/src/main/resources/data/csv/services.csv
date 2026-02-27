@@ -1,0 +1,6 @@
+service_code,description
+ForkliftOperator,Truck driving and warehouse logistics
+Picker,Order picking
+Packer,Packing and labeling
+TeamLead,Shift supervisor
+InventoryControl,Inventory counting and control

@@ -1,0 +1,6 @@
+pool_id,description,regions
+Logistics_Pool_Stockholm,Logistics consultants in Stockholm region,SE-STH
+Logistics_Pool_Goteborg,Logistics consultants in Göteborg region,SE-GOT
+Logistics_Pool_Malmo,Logistics consultants in Malmö region,SE-MAL
+Inventory_Pool_SE,Inventory specialists across Sweden,SE-STH;SE-GOT;SE-MAL;SE-UPP;SE-LIN
+TeamLead_Pool_SE,Team leads across Sweden,SE-STH;SE-GOT;SE-MAL;SE-UPP;SE-LIN

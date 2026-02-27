@@ -1,0 +1,45 @@
+spring:
+  application:
+    name: MCPClient
+
+  main:
+    web-application-type: none
+
+  ai:
+    openai:
+      base-url: https://api.openai.com
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          model: gpt-4o-mini
+          temperature: 0.7
+          max-tokens: 5000
+
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        options:
+          model: llama3.1:8b
+          temperature: 0.7
+          max-tokens: 5000
+
+    mcp:
+      client:
+        toolcallback:
+          enabled: true
+        sse:
+          connections:
+            intelliplan:
+              url: http://localhost:9090/sse
+
+logging:
+  level:
+    io.modelcontextprotocol.client: WARN
+    io.modelcontextprotocol.spec: WARN
+    com.zaxxer.hikari: ERROR   # 👈 döljer shutdown-meddelandet
+
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n"
+
+server:
+  port: 8080

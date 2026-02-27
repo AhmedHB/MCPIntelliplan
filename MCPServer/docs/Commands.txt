@@ -1,0 +1,33 @@
+//-----------------------------------------------------
+
+docker compose up -d
+
+docker compose up --build
+
+docker compose up -d   # starta postgres
+
+//-----------------------------------------------------
+
+#Spring application
+
+mvn clean package
+
+mvn spring-boot:run
+
+mvn spring-boot:run \
+-Dspring-boot.run.jvmArguments="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+
+
+-- stäng andra sessioner (så drop schema funkar)
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE datname = current_database()
+  AND pid <> pg_backend_pid();
+
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+
+//-----------------------------------------------------
+
+Run inspector
+npx @modelcontextprotocol/inspector

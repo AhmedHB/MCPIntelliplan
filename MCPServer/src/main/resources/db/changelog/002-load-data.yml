@@ -1,0 +1,90 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-1-load-regions
+      author: you
+      changes:
+        - loadData:
+            file: data/csv/regions.csv
+            tableName: regions
+            separator: ","
+            encoding: UTF-8
+
+  - changeSet:
+      id: 002-2-load-services
+      author: you
+      changes:
+        - loadData:
+            file: data/csv/services.csv
+            tableName: services
+            separator: ","
+            encoding: UTF-8
+
+  - changeSet:
+      id: 002-3-load-pools
+      author: you
+      changes:
+        - loadData:
+            file: data/csv/pools.csv
+            tableName: pools
+            separator: ","
+            encoding: UTF-8
+
+  - changeSet:
+      id: 002-4-load-consultants
+      author: you
+      changes:
+        - loadData:
+            file: data/csv/consultants.csv
+            tableName: consultants
+            separator: ","
+            encoding: UTF-8
+
+  - changeSet:
+      id: 002-5-load-customers
+      author: you
+      changes:
+        - loadData:
+            file: data/csv/customers.csv
+            tableName: customers
+            separator: ","
+            encoding: UTF-8
+
+  - changeSet:
+      id: 002-6-load-availability
+      author: you
+      changes:
+        - loadData:
+            file: data/csv/availability.csv
+            columns:
+              - column: { name: availability_id, type: STRING }
+              - column: { name: consultant_id, type: STRING }
+              - column: { name: date, type: DATE }
+              - column: { name: start_time, type: STRING }
+              - column: { name: end_time, type: STRING }
+              - column: { name: status, type: STRING }
+            tableName: availability
+            separator: ","
+            encoding: UTF-8
+
+  - changeSet:
+      id: 002-7-load-assignments
+      author: you
+      changes:
+        - loadData:
+            file: data/csv/assignments.csv
+            tableName: assignments
+            separator: ","
+            encoding: UTF-8
+
+  - changeSet:
+      id: 002-8-load-consultant-notes
+      author: you
+      changes:
+        - loadData:
+            file: data/csv/consultant_notes.csv
+            tableName: consultant_notes
+            separator: ","
+            encoding: UTF-8
+            # Viktigt: i consultant_notes.csv finns assignment_id ibland som tom sträng ""
+            # Om det inte blir NULL kommer FK fk_notes_assignment att faila.
+            nullValue: ""

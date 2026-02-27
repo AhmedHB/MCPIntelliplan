@@ -1,0 +1,319 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-schema
+      author: you
+      changes:
+
+        # ---------- Reference tables ----------
+        - createTable:
+            tableName: regions
+            columns:
+              - column:
+                  name: region_code
+                  type: text
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: text
+                  constraints:
+                    nullable: false
+
+        - createTable:
+            tableName: services
+            columns:
+              - column:
+                  name: service_code
+                  type: text
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: description
+                  type: text
+                  constraints:
+                    nullable: false
+
+        - createTable:
+            tableName: pools
+            columns:
+              - column:
+                  name: pool_id
+                  type: text
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: description
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: regions
+                  type: text
+                  constraints:
+                    nullable: true
+
+        # ---------- Core tables ----------
+        - createTable:
+            tableName: consultants
+            columns:
+              - column:
+                  name: consultant_id
+                  type: text
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: first_name
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_name
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: employment_type
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: services
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: regions
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: pools
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: restrictions
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: customer_experience
+                  type: text
+                  constraints:
+                    nullable: true
+
+        - createTable:
+            tableName: customers
+            columns:
+              - column:
+                  name: customer_id
+                  type: text
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: customer_name
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: region
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: required_services
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: risk_profile
+                  type: text
+                  constraints:
+                    nullable: false
+
+        - createTable:
+            tableName: availability
+            columns:
+              - column:
+                  name: availability_id
+                  type: text
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: consultant_id
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: date
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: start_time
+                  type: time
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_time
+                  type: time
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: text
+                  constraints:
+                    nullable: false
+
+        - createTable:
+            tableName: assignments
+            columns:
+              - column:
+                  name: assignment_id
+                  type: text
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: customer_id
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: consultant_id
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: service
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: date
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: start_time
+                  type: time
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_time
+                  type: time
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: text
+                  constraints:
+                    nullable: false
+
+        - createTable:
+            tableName: consultant_notes
+            columns:
+              - column:
+                  name: note_id
+                  type: text
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: consultant_id
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: customer_id
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: assignment_id
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: note
+                  type: text
+                  constraints:
+                    nullable: false
+
+        # ---------- Foreign keys ----------
+        - addForeignKeyConstraint:
+            baseTableName: availability
+            baseColumnNames: consultant_id
+            referencedTableName: consultants
+            referencedColumnNames: consultant_id
+            constraintName: fk_availability_consultant
+
+        - addForeignKeyConstraint:
+            baseTableName: assignments
+            baseColumnNames: customer_id
+            referencedTableName: customers
+            referencedColumnNames: customer_id
+            constraintName: fk_assignments_customer
+
+        - addForeignKeyConstraint:
+            baseTableName: assignments
+            baseColumnNames: consultant_id
+            referencedTableName: consultants
+            referencedColumnNames: consultant_id
+            constraintName: fk_assignments_consultant
+
+        - addForeignKeyConstraint:
+            baseTableName: consultant_notes
+            baseColumnNames: consultant_id
+            referencedTableName: consultants
+            referencedColumnNames: consultant_id
+            constraintName: fk_notes_consultant
+
+        - addForeignKeyConstraint:
+            baseTableName: consultant_notes
+            baseColumnNames: customer_id
+            referencedTableName: customers
+            referencedColumnNames: customer_id
+            constraintName: fk_notes_customer
+
+        - addForeignKeyConstraint:
+            baseTableName: consultant_notes
+            baseColumnNames: assignment_id
+            referencedTableName: assignments
+            referencedColumnNames: assignment_id
+            constraintName: fk_notes_assignment
+
+        # ---------- Helpful indexes ----------
+        - createIndex:
+            tableName: assignments
+            indexName: idx_assignments_date
+            columns:
+              - column:
+                  name: date
+
+        - createIndex:
+            tableName: availability
+            indexName: idx_availability_date
+            columns:
+              - column:
+                  name: date
+
+        - createIndex:
+            tableName: assignments
+            indexName: idx_assignments_consultant
+            columns:
+              - column:
+                  name: consultant_id
+
+        - createIndex:
+            tableName: assignments
+            indexName: idx_assignments_customer
+            columns:
+              - column:
+                  name: customer_id

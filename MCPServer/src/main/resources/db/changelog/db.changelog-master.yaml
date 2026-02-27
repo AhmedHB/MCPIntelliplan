@@ -1,0 +1,7 @@
+databaseChangeLog:
+  #- include:
+  #    file: 001-create-schema.yml
+  #    relativeToChangelogFile: true
+  - include:
+      file: 002-load-data.yml
+      relativeToChangelogFile: true

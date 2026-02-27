@@ -1,0 +1,181 @@
+note_id,consultant_id,customer_id,assignment_id,note
+NOTE_0001,CONS_100001,CUST_WAREHOUSE_5,ASSIGN_300003,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0002,CONS_100002,CUST_WAREHOUSE_9,ASSIGN_300008,Strong performance at CUST_WAREHOUSE_9; follows SOP closely.
+NOTE_0003,CONS_100002,CUST_WAREHOUSE_8,NULL,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0004,CONS_100003,CUST_WAREHOUSE_7,ASSIGN_300014,Prefers morning shifts; communicate changes early.
+NOTE_0005,CONS_100004,CUST_WAREHOUSE_8,ASSIGN_300017,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0006,CONS_100005,CUST_WAREHOUSE_7,ASSIGN_300021,New to CUST_WAREHOUSE_7; allow extra onboarding time.
+NOTE_0007,CONS_100006,CUST_WAREHOUSE_4,ASSIGN_300027,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0008,CONS_100006,CUST_WAREHOUSE_10,NULL,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0009,CONS_100006,CUST_WAREHOUSE_2,ASSIGN_300026,Needs refresher on returns flow; pair with experienced team lead.
+NOTE_0010,CONS_100007,CUST_WAREHOUSE_2,ASSIGN_300031,Needs refresher on inventory counts; pair with experienced team lead.
+NOTE_0011,CONS_100008,CUST_WAREHOUSE_6,ASSIGN_300033,New to CUST_WAREHOUSE_6; allow extra onboarding time.
+NOTE_0012,CONS_100008,CUST_WAREHOUSE_6,ASSIGN_300036,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0013,CONS_100009,CUST_WAREHOUSE_4,ASSIGN_300039,Prefers evening shifts; communicate changes early.
+NOTE_0014,CONS_100010,CUST_WAREHOUSE_1,ASSIGN_300045,Prefers day shifts; communicate changes early.
+NOTE_0015,CONS_100011,CUST_WAREHOUSE_2,ASSIGN_300050,Strong performance at CUST_WAREHOUSE_2; follows SOP closely.
+NOTE_0016,CONS_100011,CUST_WAREHOUSE_9,ASSIGN_300051,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0017,CONS_100012,CUST_WAREHOUSE_10,NULL,Prefers evening shifts; communicate changes early.
+NOTE_0018,CONS_100012,CUST_WAREHOUSE_7,ASSIGN_300058,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0019,CONS_100013,CUST_WAREHOUSE_1,ASSIGN_300063,Needs refresher on packing quality checks; pair with experienced team lead.
+NOTE_0020,CONS_100014,CUST_WAREHOUSE_2,ASSIGN_300066,Works well with customer team; positive feedback noted.
+NOTE_0021,CONS_100015,CUST_WAREHOUSE_1,ASSIGN_300073,Prefers day shifts; communicate changes early.
+NOTE_0022,CONS_100016,CUST_WAREHOUSE_6,ASSIGN_300075,Prefers morning shifts; communicate changes early.
+NOTE_0023,CONS_100017,CUST_WAREHOUSE_9,NULL,Strong performance at CUST_WAREHOUSE_9; follows SOP closely.
+NOTE_0024,CONS_100017,CUST_WAREHOUSE_9,ASSIGN_300080,Good with pressure at CUST_WAREHOUSE_9; reliable on short notice.
+NOTE_0025,CONS_100018,CUST_WAREHOUSE_6,ASSIGN_300084,Works well with customer team; positive feedback noted.
+NOTE_0026,CONS_100019,CUST_WAREHOUSE_5,NULL,Works well with customer team; positive feedback noted.
+NOTE_0027,CONS_100019,CUST_WAREHOUSE_1,NULL,Needs refresher on inventory counts; pair with experienced team lead.
+NOTE_0028,CONS_100019,CUST_WAREHOUSE_6,NULL,Works well with customer team; positive feedback noted.
+NOTE_0029,CONS_100020,CUST_WAREHOUSE_9,NULL,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0030,CONS_100020,CUST_WAREHOUSE_7,ASSIGN_300093,Good with pressure at CUST_WAREHOUSE_7; reliable on short notice.
+NOTE_0031,CONS_100021,CUST_WAREHOUSE_8,ASSIGN_300097,Works well with customer team; positive feedback noted.
+NOTE_0032,CONS_100021,CUST_WAREHOUSE_9,ASSIGN_300097,New to CUST_WAREHOUSE_9; allow extra onboarding time.
+NOTE_0033,CONS_100022,CUST_WAREHOUSE_3,ASSIGN_300101,Works well with customer team; positive feedback noted.
+NOTE_0034,CONS_100022,CUST_WAREHOUSE_6,ASSIGN_300100,Prefers day shifts; communicate changes early.
+NOTE_0035,CONS_100022,CUST_WAREHOUSE_1,NULL,Good with pressure at CUST_WAREHOUSE_1; reliable on short notice.
+NOTE_0036,CONS_100023,CUST_WAREHOUSE_5,ASSIGN_300105,Strong performance at CUST_WAREHOUSE_5; follows SOP closely.
+NOTE_0037,CONS_100023,CUST_WAREHOUSE_1,NULL,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0038,CONS_100024,CUST_WAREHOUSE_10,ASSIGN_300110,Prefers evening shifts; communicate changes early.
+NOTE_0039,CONS_100024,CUST_WAREHOUSE_6,ASSIGN_300112,Prefers evening shifts; communicate changes early.
+NOTE_0040,CONS_100024,CUST_WAREHOUSE_8,NULL,Needs refresher on packing quality checks; pair with experienced team lead.
+NOTE_0041,CONS_100025,CUST_WAREHOUSE_8,ASSIGN_300114,Prefers morning shifts; communicate changes early.
+NOTE_0042,CONS_100025,CUST_WAREHOUSE_1,NULL,Good with pressure at CUST_WAREHOUSE_1; reliable on short notice.
+NOTE_0043,CONS_100026,CUST_WAREHOUSE_2,ASSIGN_300121,New to CUST_WAREHOUSE_2; allow extra onboarding time.
+NOTE_0044,CONS_100027,CUST_WAREHOUSE_8,NULL,Good with pressure at CUST_WAREHOUSE_8; reliable on short notice.
+NOTE_0045,CONS_100027,CUST_WAREHOUSE_10,NULL,Good with pressure at CUST_WAREHOUSE_10; reliable on short notice.
+NOTE_0046,CONS_100028,CUST_WAREHOUSE_10,NULL,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0047,CONS_100028,CUST_WAREHOUSE_9,ASSIGN_300128,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0048,CONS_100029,CUST_WAREHOUSE_1,NULL,Prefers evening shifts; communicate changes early.
+NOTE_0049,CONS_100029,CUST_WAREHOUSE_7,NULL,Strong performance at CUST_WAREHOUSE_7; follows SOP closely.
+NOTE_0050,CONS_100030,CUST_WAREHOUSE_1,ASSIGN_300141,Good with pressure at CUST_WAREHOUSE_1; reliable on short notice.
+NOTE_0051,CONS_100030,CUST_WAREHOUSE_8,ASSIGN_300140,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0052,CONS_100030,CUST_WAREHOUSE_3,ASSIGN_300143,Good with pressure at CUST_WAREHOUSE_3; reliable on short notice.
+NOTE_0053,CONS_100031,CUST_WAREHOUSE_3,null,Works well with customer team; positive feedback noted.
+NOTE_0054,CONS_100032,CUST_WAREHOUSE_7,ASSIGN_300148,Prefers day shifts; communicate changes early.
+NOTE_0055,CONS_100032,CUST_WAREHOUSE_4,null,Strong performance at CUST_WAREHOUSE_4; follows SOP closely.
+NOTE_0056,CONS_100033,CUST_WAREHOUSE_2,ASSIGN_300155,Good with pressure at CUST_WAREHOUSE_2; reliable on short notice.
+NOTE_0057,CONS_100034,CUST_WAREHOUSE_9,null,Works well with customer team; positive feedback noted.
+NOTE_0058,CONS_100035,CUST_WAREHOUSE_7,ASSIGN_300160,New to CUST_WAREHOUSE_7; allow extra onboarding time.
+NOTE_0059,CONS_100036,CUST_WAREHOUSE_3,ASSIGN_300164,Prefers evening shifts; communicate changes early.
+NOTE_0060,CONS_100036,CUST_WAREHOUSE_7,ASSIGN_300168,New to CUST_WAREHOUSE_7; allow extra onboarding time.
+NOTE_0061,CONS_100036,CUST_WAREHOUSE_3,ASSIGN_300164,Prefers morning shifts; communicate changes early.
+NOTE_0062,CONS_100037,CUST_WAREHOUSE_1,ASSIGN_300172,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0063,CONS_100037,CUST_WAREHOUSE_8,ASSIGN_300172,Good with pressure at CUST_WAREHOUSE_8; reliable on short notice.
+NOTE_0064,CONS_100038,CUST_WAREHOUSE_10,ASSIGN_300173,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0065,CONS_100039,CUST_WAREHOUSE_4,ASSIGN_300177,Strong performance at CUST_WAREHOUSE_4; follows SOP closely.
+NOTE_0066,CONS_100039,CUST_WAREHOUSE_1,ASSIGN_300176,Works well with customer team; positive feedback noted.
+NOTE_0067,CONS_100039,CUST_WAREHOUSE_5,ASSIGN_300176,Strong performance at CUST_WAREHOUSE_5; follows SOP closely.
+NOTE_0068,CONS_100040,CUST_WAREHOUSE_3,ASSIGN_300185,Works well with customer team; positive feedback noted.
+NOTE_0069,CONS_100041,CUST_WAREHOUSE_9,ASSIGN_300190,Works well with customer team; positive feedback noted.
+NOTE_0070,CONS_100041,CUST_WAREHOUSE_1,ASSIGN_300189,Needs refresher on packing quality checks; pair with experienced team lead.
+NOTE_0071,CONS_100041,CUST_WAREHOUSE_2,NULL,New to CUST_WAREHOUSE_2; allow extra onboarding time.
+NOTE_0072,CONS_100042,CUST_WAREHOUSE_8,ASSIGN_300197,New to CUST_WAREHOUSE_8; allow extra onboarding time.
+NOTE_0073,CONS_100042,CUST_WAREHOUSE_9,ASSIGN_300193,Works well with customer team; positive feedback noted.
+NOTE_0074,CONS_100043,CUST_WAREHOUSE_2,ASSIGN_300200,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0075,CONS_100044,CUST_WAREHOUSE_5,ASSIGN_300203,Needs refresher on returns flow; pair with experienced team lead.
+NOTE_0076,CONS_100044,CUST_WAREHOUSE_10,ASSIGN_300202,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0077,CONS_100044,CUST_WAREHOUSE_9,NULL,Good with pressure at CUST_WAREHOUSE_9; reliable on short notice.
+NOTE_0078,CONS_100045,CUST_WAREHOUSE_4,NULL,Prefers morning shifts; communicate changes early.
+NOTE_0079,CONS_100045,CUST_WAREHOUSE_1,ASSIGN_300205,Works well with customer team; positive feedback noted.
+NOTE_0080,CONS_100045,CUST_WAREHOUSE_7,ASSIGN_300207,Needs refresher on inventory counts; pair with experienced team lead.
+NOTE_0081,CONS_100046,CUST_WAREHOUSE_4,ASSIGN_300212,New to CUST_WAREHOUSE_4; allow extra onboarding time.
+NOTE_0082,CONS_100047,CUST_WAREHOUSE_9,ASSIGN_300214,Strong performance at CUST_WAREHOUSE_9; follows SOP closely.
+NOTE_0083,CONS_100047,CUST_WAREHOUSE_6,ASSIGN_300214,New to CUST_WAREHOUSE_6; allow extra onboarding time.
+NOTE_0084,CONS_100048,CUST_WAREHOUSE_6,NULL,Good with pressure at CUST_WAREHOUSE_6; reliable on short notice.
+NOTE_0085,CONS_100048,CUST_WAREHOUSE_3,ASSIGN_300221,New to CUST_WAREHOUSE_3; allow extra onboarding time.
+NOTE_0086,CONS_100049,CUST_WAREHOUSE_7,null,Strong performance at CUST_WAREHOUSE_7; follows SOP closely.
+NOTE_0087,CONS_100049,CUST_WAREHOUSE_10,NULL,Needs refresher on returns flow; pair with experienced team lead.
+NOTE_0088,CONS_100050,CUST_WAREHOUSE_4,ASSIGN_300230,New to CUST_WAREHOUSE_4; allow extra onboarding time.
+NOTE_0089,CONS_100051,CUST_WAREHOUSE_5,NULL,Needs refresher on returns flow; pair with experienced team lead.
+NOTE_0090,CONS_100052,CUST_WAREHOUSE_10,ASSIGN_300238,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0091,CONS_100053,CUST_WAREHOUSE_1,ASSIGN_300241,Good with pressure at CUST_WAREHOUSE_1; reliable on short notice.
+NOTE_0092,CONS_100053,CUST_WAREHOUSE_8,NULL,Needs refresher on returns flow; pair with experienced team lead.
+NOTE_0093,CONS_100054,CUST_WAREHOUSE_3,ASSIGN_300244,New to CUST_WAREHOUSE_3; allow extra onboarding time.
+NOTE_0094,CONS_100054,CUST_WAREHOUSE_8,ASSIGN_300247,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0095,CONS_100055,CUST_WAREHOUSE_8,NULL,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0096,CONS_100055,CUST_WAREHOUSE_3,NULL,Strong performance at CUST_WAREHOUSE_3; follows SOP closely.
+NOTE_0097,CONS_100056,CUST_WAREHOUSE_1,ASSIGN_300260,New to CUST_WAREHOUSE_1; allow extra onboarding time.
+NOTE_0098,CONS_100057,CUST_WAREHOUSE_5,NULL,Works well with customer team; positive feedback noted.
+NOTE_0099,CONS_100058,CUST_WAREHOUSE_8,NULL,Strong performance at CUST_WAREHOUSE_8; follows SOP closely.
+NOTE_0100,CONS_100058,CUST_WAREHOUSE_1,ASSIGN_300269,Works well with customer team; positive feedback noted.
+NOTE_0101,CONS_100059,CUST_WAREHOUSE_4,ASSIGN_300275,Needs refresher on scanner routines; pair with experienced team lead.
+NOTE_0102,CONS_100060,CUST_WAREHOUSE_3,ASSIGN_300276,Strong performance at CUST_WAREHOUSE_3; follows SOP closely.
+NOTE_0103,CONS_100060,CUST_WAREHOUSE_9,ASSIGN_300278,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0104,CONS_100061,CUST_WAREHOUSE_5,ASSIGN_300281,Strong performance at CUST_WAREHOUSE_5; follows SOP closely.
+NOTE_0105,CONS_100062,CUST_WAREHOUSE_9,ASSIGN_300285,Strong performance at CUST_WAREHOUSE_9; follows SOP closely.
+NOTE_0106,CONS_100062,CUST_WAREHOUSE_2,ASSIGN_300284,Good with pressure at CUST_WAREHOUSE_2; reliable on short notice.
+NOTE_0107,CONS_100063,CUST_WAREHOUSE_10,ASSIGN_300293,Works well with customer team; positive feedback noted.
+NOTE_0108,CONS_100063,CUST_WAREHOUSE_6,ASSIGN_300289,Works well with customer team; positive feedback noted.
+NOTE_0109,CONS_100063,CUST_WAREHOUSE_2,NULL,New to CUST_WAREHOUSE_2; allow extra onboarding time.
+NOTE_0110,CONS_100064,CUST_WAREHOUSE_2,NULL,Works well with customer team; positive feedback noted.
+NOTE_0111,CONS_100065,CUST_WAREHOUSE_5,ASSIGN_300302,Good with pressure at CUST_WAREHOUSE_5; reliable on short notice.
+NOTE_0112,CONS_100065,CUST_WAREHOUSE_3,NULL,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0113,CONS_100066,CUST_WAREHOUSE_3,ASSIGN_300306,New to CUST_WAREHOUSE_3; allow extra onboarding time.
+NOTE_0114,CONS_100066,CUST_WAREHOUSE_8,ASSIGN_300307,Strong performance at CUST_WAREHOUSE_8; follows SOP closely.
+NOTE_0115,CONS_100067,CUST_WAREHOUSE_3,ASSIGN_300309,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0116,CONS_100067,CUST_WAREHOUSE_9,ASSIGN_300310,New to CUST_WAREHOUSE_9; allow extra onboarding time.
+NOTE_0117,CONS_100068,CUST_WAREHOUSE_2,NULL,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0118,CONS_100068,CUST_WAREHOUSE_10,ASSIGN_300313,Prefers evening shifts; communicate changes early.
+NOTE_0119,CONS_100068,CUST_WAREHOUSE_8,ASSIGN_300312,Prefers evening shifts; communicate changes early.
+NOTE_0120,CONS_100069,CUST_WAREHOUSE_7,ASSIGN_300316,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0121,CONS_100069,CUST_WAREHOUSE_3,ASSIGN_300314,Works well with customer team; positive feedback noted.
+NOTE_0122,CONS_100070,CUST_WAREHOUSE_2,ASSIGN_300321,Needs refresher on scanner routines; pair with experienced team lead.
+NOTE_0123,CONS_100070,CUST_WAREHOUSE_8,ASSIGN_300321,Strong performance at CUST_WAREHOUSE_8; follows SOP closely.
+NOTE_0124,CONS_100071,CUST_WAREHOUSE_7,ASSIGN_300327,Works well with customer team; positive feedback noted.
+NOTE_0125,CONS_100071,CUST_WAREHOUSE_4,NULL,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0126,CONS_100071,CUST_WAREHOUSE_3,ASSIGN_300325,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0127,CONS_100072,CUST_WAREHOUSE_10,ASSIGN_300329,Works well with customer team; positive feedback noted.
+NOTE_0128,CONS_100072,CUST_WAREHOUSE_10,NULL,Works well with customer team; positive feedback noted.
+NOTE_0129,CONS_100072,CUST_WAREHOUSE_6,NULL,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0130,CONS_100073,CUST_WAREHOUSE_7,NULL,New to CUST_WAREHOUSE_7; allow extra onboarding time.
+NOTE_0131,CONS_100073,CUST_WAREHOUSE_6,NULL,Strong performance at CUST_WAREHOUSE_6; follows SOP closely.
+NOTE_0132,CONS_100073,CUST_WAREHOUSE_6,ASSIGN_300334,New to CUST_WAREHOUSE_6; allow extra onboarding time.
+NOTE_0133,CONS_100074,CUST_WAREHOUSE_10,ASSIGN_300339,Works well with customer team; positive feedback noted.
+NOTE_0134,CONS_100074,CUST_WAREHOUSE_7,ASSIGN_300338,Works well with customer team; positive feedback noted.
+NOTE_0135,CONS_100075,CUST_WAREHOUSE_4,ASSIGN_300345,New to CUST_WAREHOUSE_4; allow extra onboarding time.
+NOTE_0136,CONS_100076,CUST_WAREHOUSE_3,ASSIGN_300348,Works well with customer team; positive feedback noted.
+NOTE_0137,CONS_100076,CUST_WAREHOUSE_8,ASSIGN_300349,Strong performance at CUST_WAREHOUSE_8; follows SOP closely.
+NOTE_0138,CONS_100077,CUST_WAREHOUSE_10,NULL,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0139,CONS_100077,CUST_WAREHOUSE_9,ASSIGN_300353,Good with pressure at CUST_WAREHOUSE_9; reliable on short notice.
+NOTE_0140,CONS_100078,CUST_WAREHOUSE_7,ASSIGN_300359,Good with pressure at CUST_WAREHOUSE_7; reliable on short notice.
+NOTE_0141,CONS_100079,CUST_WAREHOUSE_5,ASSIGN_300363,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0142,CONS_100079,CUST_WAREHOUSE_1,ASSIGN_300363,Needs refresher on returns flow; pair with experienced team lead.
+NOTE_0143,CONS_100079,CUST_WAREHOUSE_8,NULL,Strong performance at CUST_WAREHOUSE_8; follows SOP closely.
+NOTE_0144,CONS_100080,CUST_WAREHOUSE_8,ASSIGN_300364,Prefers day shifts; communicate changes early.
+NOTE_0145,CONS_100080,CUST_WAREHOUSE_9,NULL,Needs refresher on scanner routines; pair with experienced team lead.
+NOTE_0146,CONS_100081,CUST_WAREHOUSE_9,NULL,Good with pressure at CUST_WAREHOUSE_9; reliable on short notice.
+NOTE_0147,CONS_100081,CUST_WAREHOUSE_8,ASSIGN_300370,Good with pressure at CUST_WAREHOUSE_8; reliable on short notice.
+NOTE_0148,CONS_100082,CUST_WAREHOUSE_3,ASSIGN_300377,Works well with customer team; positive feedback noted.
+NOTE_0149,CONS_100082,CUST_WAREHOUSE_5,ASSIGN_300376,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0150,CONS_100083,CUST_WAREHOUSE_5,NULL,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0151,CONS_100084,CUST_WAREHOUSE_2,ASSIGN_300382,New to CUST_WAREHOUSE_2; allow extra onboarding time.
+NOTE_0152,CONS_100084,CUST_WAREHOUSE_3,ASSIGN_300383,New to CUST_WAREHOUSE_3; allow extra onboarding time.
+NOTE_0153,CONS_100085,CUST_WAREHOUSE_10,ASSIGN_300386,Works well with customer team; positive feedback noted.
+NOTE_0154,CONS_100086,CUST_WAREHOUSE_5,NULL,Prefers day shifts; communicate changes early.
+NOTE_0155,CONS_100087,CUST_WAREHOUSE_1,ASSIGN_300392,Prefers evening shifts; communicate changes early.
+NOTE_0156,CONS_100087,CUST_WAREHOUSE_8,NULL,Good with pressure at CUST_WAREHOUSE_8; reliable on short notice.
+NOTE_0157,CONS_100087,CUST_WAREHOUSE_8,NULL,Prefers morning shifts; communicate changes early.
+NOTE_0158,CONS_100088,CUST_WAREHOUSE_1,ASSIGN_300395,Strong performance at CUST_WAREHOUSE_1; follows SOP closely.
+NOTE_0159,CONS_100088,CUST_WAREHOUSE_7,ASSIGN_300398,Works well with customer team; positive feedback noted.
+NOTE_0160,CONS_100089,CUST_WAREHOUSE_7,ASSIGN_300401,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0161,CONS_100089,CUST_WAREHOUSE_5,NULL,Good with pressure at CUST_WAREHOUSE_5; reliable on short notice.
+NOTE_0162,CONS_100090,CUST_WAREHOUSE_1,ASSIGN_300406,New to CUST_WAREHOUSE_1; allow extra onboarding time.
+NOTE_0163,CONS_100090,CUST_WAREHOUSE_5,ASSIGN_300406,New to CUST_WAREHOUSE_5; allow extra onboarding time.
+NOTE_0164,CONS_100090,CUST_WAREHOUSE_10,ASSIGN_300405,Works well with customer team; positive feedback noted.
+NOTE_0165,CONS_100091,CUST_WAREHOUSE_9,ASSIGN_300410,Prefers day shifts; communicate changes early.
+NOTE_0166,CONS_100092,CUST_WAREHOUSE_1,NULL,Strong performance at CUST_WAREHOUSE_1; follows SOP closely.
+NOTE_0167,CONS_100093,CUST_WAREHOUSE_2,ASSIGN_300416,Prefers evening shifts; communicate changes early.
+NOTE_0168,CONS_100093,CUST_WAREHOUSE_5,ASSIGN_300414,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0169,CONS_100093,CUST_WAREHOUSE_10,ASSIGN_300415,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0170,CONS_100094,CUST_WAREHOUSE_2,NULL,Prefers day shifts; communicate changes early.
+NOTE_0171,CONS_100095,CUST_WAREHOUSE_2,ASSIGN_300425,Needs refresher on scanner routines; pair with experienced team lead.
+NOTE_0172,CONS_100096,CUST_WAREHOUSE_5,NULL,Works well with customer team; positive feedback noted.
+NOTE_0173,CONS_100096,CUST_WAREHOUSE_5,ASSIGN_300427,Needs refresher on packing quality checks; pair with experienced team lead.
+NOTE_0174,CONS_100097,CUST_WAREHOUSE_6,NULL,Needs refresher on inventory counts; pair with experienced team lead.
+NOTE_0175,CONS_100097,CUST_WAREHOUSE_8,ASSIGN_300431,Avoid back-to-back long shifts; watch fatigue risk.
+NOTE_0176,CONS_100098,CUST_WAREHOUSE_2,ASSIGN_300438,Prefers evening shifts; communicate changes early.
+NOTE_0177,CONS_100098,CUST_WAREHOUSE_8,NULL,Strong performance at CUST_WAREHOUSE_8; follows SOP closely.
+NOTE_0178,CONS_100099,CUST_WAREHOUSE_10,NULL,New to CUST_WAREHOUSE_10; allow extra onboarding time.
+NOTE_0179,CONS_100100,CUST_WAREHOUSE_3,ASSIGN_300445,Strong performance at CUST_WAREHOUSE_3; follows SOP closely.
+NOTE_0180,CONS_100100,CUST_WAREHOUSE_5,ASSIGN_300447,Good with pressure at CUST_WAREHOUSE_5; reliable on short notice.

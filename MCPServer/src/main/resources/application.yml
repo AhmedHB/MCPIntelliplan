@@ -1,0 +1,48 @@
+spring:
+  application:
+    name: MCPServer
+
+  ai:
+    mcp.server:
+      name: my-superhero-server
+      version: 0.0.1
+
+      # Using spring-ai-starter-mcp-server-webmvc
+      type: sync
+      instructions: "This server provides crud operations for intelliplan database"
+      sse-endpoint: /sse
+      capabilities.completion: true
+      capabilities.prompt: true
+      capabilities.resource: true
+      capabilities.tool: true
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/intelliplan
+    username: intelliplan
+    password: intelliplan
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update   # eller create / create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+
+server:
+  port: 9090
+
+logging:
+  level:
+    org.hibernate.SQL: debug
+    org.hibernate.tool.schema: debug
+    org.springframework.jdbc.datasource.init: debug
+
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n"
