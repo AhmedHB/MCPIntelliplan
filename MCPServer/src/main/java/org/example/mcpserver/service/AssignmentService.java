@@ -1,6 +1,7 @@
 package org.example.mcpserver.service;
 
 import org.example.mcpserver.dto.AssignmentDTO;
+import org.example.mcpserver.dto.ConsultantDTO;
 import org.example.mcpserver.dto.ConsultantSuggestionDTO;
 import org.example.mcpserver.repository.*;
 import org.example.mcpserver.repository.domain.AssignmentEntity;
@@ -190,6 +191,32 @@ public class AssignmentService {
     }
 
     @Tool(
+            name = "assignment_find_consultants_by_date",
+            description = "Return distinct consultants that have at least one assignment on the given date (YYYY-MM-DD)."
+    )
+    @Transactional(readOnly = true)
+    public List<ConsultantDTO> findConsultantsByDate(LocalDate date) {
+
+        ValidationUtils.requireNonNull(date, "date");
+
+        // Reuse existing repo method findByDate(date)
+        // Distinct by consultantId to avoid duplicates
+        return assignmentRepository.findByDate(date).stream()
+                .map(AssignmentEntity::getConsultant)
+                .filter(Objects::nonNull)
+                .collect(java.util.stream.Collectors.toMap(
+                        c -> c.getConsultantId(),
+                        c -> c,
+                        (a, b) -> a,              // keep first if duplicates
+                        java.util.LinkedHashMap::new
+                ))
+                .values()
+                .stream()
+                .map(consultantMapper::toDto)
+                .toList();
+    }
+
+    @Tool(
             name = "assignment_suggest_consultants",
             description = "Suggest consultants for an assignment by checking time availability, region match, restrictions, and required service."
     )
@@ -311,7 +338,6 @@ public class AssignmentService {
     }
 
     // overlap if intervals intersect: [slotStart, slotEnd) intersects [aStart, aEnd)
-    // If you treat end as inclusive in your business rules, tell me and I’ll adjust.
     private static boolean overlaps(LocalTime slotStart, LocalTime slotEnd, LocalTime aStart, LocalTime aEnd) {
         if (slotStart == null || slotEnd == null || aStart == null || aEnd == null) return false;
         return slotStart.isBefore(aEnd) && slotEnd.isAfter(aStart);

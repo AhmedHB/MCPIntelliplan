@@ -1,11 +1,15 @@
 package org.example.mcpserver.service;
 
+import org.example.mcpserver.dto.ConsultantCountByRegionDTO;
 import org.example.mcpserver.dto.ConsultantDTO;
+import org.example.mcpserver.dto.RegionByConsultantResponseDTO;
 import org.example.mcpserver.repository.AvailabilityRepository;
 import org.example.mcpserver.repository.ConsultantRepository;
+import org.example.mcpserver.repository.RegionRepository;
 import org.example.mcpserver.repository.domain.AvailabilityEntity;
 import org.example.mcpserver.repository.domain.AvailabilityStatus;
 import org.example.mcpserver.repository.domain.ConsultantEntity;
+import org.example.mcpserver.repository.domain.RegionEntity;
 import org.example.mcpserver.service.exception.BadRequestException;
 import org.example.mcpserver.service.exception.NotFoundException;
 import org.example.mcpserver.service.mapping.ConsultantMapper;
@@ -16,7 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 @Service
@@ -25,13 +31,15 @@ public class ConsultantService {
 
     private final ConsultantRepository consultantRepository;
     private final AvailabilityRepository availabilityRepository;
+    private final RegionRepository regionRepository;
     private final ConsultantMapper consultantMapper;
 
     public ConsultantService(ConsultantRepository consultantRepository,
-                             AvailabilityRepository availabilityRepository,
+                             AvailabilityRepository availabilityRepository, PoolService poolService, RegionRepository regionRepository,
                              ConsultantMapper consultantMapper) {
         this.consultantRepository = consultantRepository;
         this.availabilityRepository = availabilityRepository;
+        this.regionRepository = regionRepository;
         this.consultantMapper = consultantMapper;
     }
 
@@ -248,6 +256,180 @@ public class ConsultantService {
                     };
                 })
                 .map(consultantMapper::toDto)
+                .toList();
+    }
+
+    @Tool(
+            name = "organization_get_region_by_consultant_id",
+            description = "Returns the region(s) for a consultant by consultantId (e.g. CONS_100086). Uses the consultant.regions field."
+    )
+    @Transactional(readOnly = true)
+    public RegionByConsultantResponseDTO getRegionByConsultantId(String consultantId) {
+
+        String id = ValidationUtils.requireNonBlank(consultantId, "consultantId");
+
+        ConsultantEntity entity = consultantRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Consultant hittades inte: " + id));
+
+        String regions = ValidationUtils.trimToNull(entity.getRegions());
+        if (regions == null) {
+            throw new NotFoundException("No region set for consultant: " + id);
+        }
+
+        return new RegionByConsultantResponseDTO(
+                entity.getConsultantId(),
+                entity.getFirstName(),
+                entity.getLastName(),
+                regions
+        );
+    }
+
+    @Tool(
+            name = "organization_get_region_by_consultant_name",
+            description = "Returns the region(s) for a consultant identified by firstName and lastName (case-insensitive). Uses the consultant.regions field."
+    )
+    @Transactional(readOnly = true)
+    public RegionByConsultantResponseDTO getRegionByConsultantName(String firstName, String lastName) {
+
+        String fn = ValidationUtils.requireNonBlank(firstName, "firstName");
+        String ln = ValidationUtils.requireNonBlank(lastName, "lastName");
+
+        List<ConsultantEntity> matches =
+                consultantRepository.findByFirstNameIgnoreCaseAndLastNameIgnoreCase(fn, ln);
+
+        if (matches.isEmpty()) {
+            throw new NotFoundException("Consultant not found: " + fn + " " + ln);
+        }
+        if (matches.size() > 1) {
+            throw new BadRequestException("Multiple consultants found with name: " + fn + " " + ln);
+        }
+
+        ConsultantEntity entity = matches.get(0);
+
+        String regions = ValidationUtils.trimToNull(entity.getRegions());
+        if (regions == null) {
+            throw new NotFoundException("No region set for consultant: " + entity.getConsultantId());
+        }
+
+        return new RegionByConsultantResponseDTO(
+                entity.getConsultantId(),
+                entity.getFirstName(),
+                entity.getLastName(),
+                regions
+        );
+    }
+
+    @Tool(
+            name = "organization_list_consultants_by_region",
+            description = "Lists consultants in a given region. Input can be region code (e.g. SE-STH) or region name (e.g. Stockholm). Matches against consultant.regions (semicolon-separated codes)."
+    )
+    @Transactional(readOnly = true)
+    public List<ConsultantDTO> listConsultantsByRegion(String region) {
+
+        String regionCode = resolveRegionCode(region);
+
+        return consultantRepository.findAll().stream()
+                .filter(c -> hasRegionToken(c.getRegions(), regionCode))
+                .map(consultantMapper::toDto)
+                .toList();
+    }
+
+    // -------------------- helpers --------------------
+
+    private String resolveRegionCode(String input) {
+        String candidate = cleanToken(input);
+
+        // if user already provides SE-XXX, try PK lookup
+        if (candidate != null && candidate.toUpperCase(Locale.ROOT).startsWith("SE-")) {
+            String code = candidate.toUpperCase(Locale.ROOT);
+            // verify it exists; otherwise fail early
+            regionRepository.findById(code)
+                    .orElseThrow(() -> new NotFoundException("Region not found: " + code));
+            return code;
+        }
+
+        // otherwise treat as region name, e.g. "Stockholm"
+        return regionRepository.findByNameIgnoreCase(candidate)
+                .map(r -> r.getRegionCode())
+                .orElseThrow(() -> new NotFoundException("Region not found: " + candidate));
+    }
+    private boolean hasRegionToken(String regionsCsv, String regionCode) {
+        String regions = ValidationUtils.trimToNull(regionsCsv);
+        if (regions == null) return false;
+
+        return Arrays.stream(regions.split(";"))
+                .map(String::trim)
+                .map(ConsultantService::cleanToken)
+                .filter(s -> s != null && !s.isBlank())
+                .anyMatch(tok -> tok.equalsIgnoreCase(regionCode));
+    }
+
+    @Tool(
+            name = "organization_count_consultants_by_region",
+            description = "Counts how many consultants belong to a given region. Input can be region code (e.g. SE-LIN) or region name (e.g. Linköping). Uses consultant.regions (semicolon-separated codes)."
+    )
+    @Transactional(readOnly = true)
+    public ConsultantCountByRegionDTO countConsultantsByRegion(String region) {
+
+        String regionCode = resolveRegionCode(region);
+
+        RegionEntity regionEntity = regionRepository.findById(regionCode)
+                .orElseThrow(() -> new NotFoundException("Region not found: " + regionCode));
+
+        long count = consultantRepository.findAll().stream()
+                .filter(c -> hasRegionToken(c.getRegions(), regionCode))
+                .count();
+
+        return new ConsultantCountByRegionDTO(
+                regionCode,
+                regionEntity.getName(),
+                count
+        );
+    }
+
+    @Tool(
+            name = "organization_list_regions_with_consultant_counts",
+            description = "Lists all regions with consultant counts. Counts are based on consultant.regions (semicolon-separated region codes)."
+    )
+    @Transactional(readOnly = true)
+    public List<ConsultantCountByRegionDTO> listRegionsWithConsultantCounts() {
+
+        // 1) preload all regions (source of truth for name + code)
+        List<RegionEntity> regions = regionRepository.findAll();
+
+        // 2) init counters per regionCode
+        java.util.Map<String, Long> counts = new java.util.HashMap<>();
+        for (RegionEntity r : regions) {
+            counts.put(r.getRegionCode(), 0L); // adjust getter if needed
+        }
+
+        // 3) count: each consultant contributes +1 to each region token they have
+        for (ConsultantEntity c : consultantRepository.findAll()) {
+            String csv = ValidationUtils.trimToNull(c.getRegions());
+            if (csv == null) continue;
+
+            java.util.Set<String> uniqueTokens = java.util.Arrays.stream(csv.split(";"))
+                    .map(String::trim)
+                    .map(ConsultantService::cleanToken)
+                    .filter(s -> s != null && !s.isBlank())
+                    .map(s -> s.toUpperCase(Locale.ROOT))
+                    .collect(java.util.stream.Collectors.toSet());
+
+            for (String code : uniqueTokens) {
+                if (counts.containsKey(code)) {
+                    counts.put(code, counts.get(code) + 1);
+                }
+            }
+        }
+
+        // 4) map to DTO list (sorted by regionCode)
+        return regions.stream()
+                .map(r -> new ConsultantCountByRegionDTO(
+                        r.getRegionCode(),
+                        r.getName(),
+                        counts.getOrDefault(r.getRegionCode(), 0L)
+                ))
+                .sorted(java.util.Comparator.comparing(ConsultantCountByRegionDTO::regionCode))
                 .toList();
     }
 

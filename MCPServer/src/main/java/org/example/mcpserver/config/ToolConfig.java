@@ -1,67 +1,50 @@
 package org.example.mcpserver.config;
 
+import io.modelcontextprotocol.server.McpServerFeatures;
 import org.example.mcpserver.service.*;
-import org.springframework.ai.tool.ToolCallbackProvider;
+import org.springframework.ai.mcp.McpToolUtils;
+import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.method.MethodToolCallbackProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.util.*;
+import java.util.stream.Stream;
 
 @Configuration
 public class ToolConfig {
 
     @Bean
-    public ToolCallbackProvider assignmentTools(AssignmentService service) {
-        return MethodToolCallbackProvider.builder()
-                .toolObjects(service)
-                .build();
-    }
+    public List<McpServerFeatures.SyncToolSpecification> tools(
+            AssignmentService assignmentService,
+            AvailabilityService availabilityService,
+            ConsultantService consultantService,
+            ConsultantNoteService consultantNoteService,
+            CustomerService customerService,
+            PoolService poolService,
+            RegionService regionService,
+            ServiceService serviceService
+    ) {
+        List<ToolCallback> callbacks = new ArrayList<>();
 
-    @Bean
-    public ToolCallbackProvider availabilityTools(AvailabilityService service) {
-        return MethodToolCallbackProvider.builder()
-                .toolObjects(service)
-                .build();
-    }
+        Stream.of(
+                assignmentService,
+                availabilityService,
+                consultantService,
+                consultantNoteService,
+                customerService,
+                poolService,
+                regionService,
+                serviceService
+        ).forEach(svc -> callbacks.addAll(Arrays.asList(
+                MethodToolCallbackProvider.builder().toolObjects(svc).build().getToolCallbacks()
+        )));
 
-    @Bean
-    public ToolCallbackProvider consultantTools(ConsultantService service) {
-        return MethodToolCallbackProvider.builder()
-                .toolObjects(service)
-                .build();
-    }
+        callbacks.sort(Comparator.comparing(cb -> cb.getToolDefinition().name()));
 
-    @Bean
-    public ToolCallbackProvider consultantNoteTools(ConsultantNoteService service) {
-        return MethodToolCallbackProvider.builder()
-                .toolObjects(service)
-                .build();
-    }
+        // Debug: ska vara alfabetiskt i loggen
+        callbacks.forEach(cb -> System.out.println("TOOL: " + cb.getToolDefinition().name()));
 
-    @Bean
-    public ToolCallbackProvider customerTools(CustomerService service) {
-        return MethodToolCallbackProvider.builder()
-                .toolObjects(service)
-                .build();
-    }
-
-    @Bean
-    public ToolCallbackProvider poolTools(PoolService service) {
-        return MethodToolCallbackProvider.builder()
-                .toolObjects(service)
-                .build();
-    }
-
-    @Bean
-    public ToolCallbackProvider regionTools(RegionService service) {
-        return MethodToolCallbackProvider.builder()
-                .toolObjects(service)
-                .build();
-    }
-
-    @Bean
-    public ToolCallbackProvider serviceTools(ServiceService service) {
-        return MethodToolCallbackProvider.builder()
-                .toolObjects(service)
-                .build();
+        return McpToolUtils.toSyncToolSpecifications(callbacks.toArray(new ToolCallback[0]));
     }
 }

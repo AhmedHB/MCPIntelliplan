@@ -65,6 +65,22 @@ public class RegionService {
     }
 
     @Tool(
+            name = "organization_list_regions",
+            description = "Lists all available regions."
+    )
+    @Transactional(readOnly = true)
+    public List<RegionDTO> listRegions() {
+
+        return regionRepository.findAll().stream()
+                .sorted(java.util.Comparator.comparing(RegionEntity::getRegionCode))
+                .map(r -> new RegionDTO(
+                        r.getRegionCode(),
+                        r.getName()
+                ))
+                .toList();
+    }
+
+    @Tool(
             name = "region_list",
             description = "List all regions."
     )

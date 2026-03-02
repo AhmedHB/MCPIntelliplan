@@ -1,11 +1,15 @@
 package org.example.mcpclient.workflow;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.ai.chat.client.ChatClient;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ServiceIntentClassifier {
 
@@ -27,23 +31,59 @@ public class ServiceIntentClassifier {
             String matchMode
     ) {}
 
+    private static final Pattern CONS_ID_PATTERN =
+            Pattern.compile("\\bCONS_\\d+\\b", Pattern.CASE_INSENSITIVE);
+
     private final ChatClient classifierClient;
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper;
 
     public ServiceIntentClassifier(ChatClient classifierClient) {
         this.classifierClient = classifierClient;
+        this.mapper = new ObjectMapper()
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
 
     public Command classify(String userInput) {
 
+        String u = userInput == null ? "" : userInput.trim();
+        String ul = u.toLowerCase(Locale.ROOT);
+
+        boolean mentionsServices = containsAny(ul,
+                "kompetens", "kompetenser",
+                "skill", "skills",
+                "service", "services",
+                "tjänst", "tjänster",
+                "competency", "competencies"
+        );
+
+        // ============================================================
+        // HARD OVERRIDE 1: "Vilka kompetenser har konsult CONS_100086?"
+        // -> GET_SERVICES_BY_ID
+        // ============================================================
+        Matcher m = CONS_ID_PATTERN.matcher(u);
+        if (m.find() && mentionsServices) {
+            String id = m.group().toUpperCase(Locale.ROOT);
+            return new Command("GET_SERVICES_BY_ID", id, null, null, null, null);
+        }
+
+        // ============================================================
+        // HARD OVERRIDE 2: list all services/skills
+        // ============================================================
+        if (containsAny(ul,
+                "lista alla kompetenser", "visa alla kompetenser", "alla kompetenser",
+                "lista alla skills", "visa alla skills",
+                "list all skills", "show all skills",
+                "list all services", "show all services"
+        )) {
+            return new Command("LIST_ALL_SERVICES", null, null, null, null, null);
+        }
+
+        // ============================================================
+        // LLM fallback
+        // ============================================================
         String raw = classifierClient.prompt()
                 .system("""
                         You classify user intent for the Service domain.
-
-                        This domain handles:
-                        - Getting services on a consultant record (by id or by name)
-                        - Finding consultants who have specific services/skills/competencies
-                        - Listing all service definitions
 
                         Return ONLY valid JSON. No explanations.
 
@@ -57,132 +97,78 @@ public class ServiceIntentClassifier {
                           "matchMode": "ALL|ANY|null"
                         }
 
-                        Deterministic rules (HIGH PRIORITY):
+                        Rules:
+                        - If user asks to list/show all skills/services/competencies -> LIST_ALL_SERVICES.
+                        - If input contains a consultant ID like CONS_100086 AND user asks about that consultant's services -> GET_SERVICES_BY_ID.
+                        - If user asks about a consultant's services by full name -> GET_SERVICES_BY_NAME.
+                        - If user asks which consultants have specific services -> FIND_CONSULTANTS_BY_SERVICES with services[] and matchMode.
+                        - Otherwise -> OTHER.
 
-                        0) If user asks to list/show all skills/services/competencies:
-                           Swedish: "lista alla kompetenser", "visa alla kompetenser", "alla kompetenser",
-                                    "lista alla skills", "visa alla skills"
-                           English: "list all skills", "show all skills", "list all services", "show all services"
-                           -> action = LIST_ALL_SERVICES
-
-                        Keywords that mean services/skills/competencies:
-                        Swedish: "kompetens", "kompetenser", "skills", "tjänster", "service", "services"
-                        English: "skill", "skills", "competency", "competencies", "service", "services"
-
-                        Match mode rules:
-                        - If user uses Swedish "eller" or English "or" -> matchMode = ANY
-                        - If user uses Swedish "och" or English "and" -> matchMode = ALL
-                        - If user lists multiple services separated by comma (",") -> matchMode = ALL
-                        - If only one service is mentioned -> matchMode = ANY (or ALL, both are equivalent). Use ANY.
-
-                        Action rules:
-                        1) If input contains a consultant ID like CONS_100086 AND user asks about that consultant's services/skills/competencies:
-                           -> action = GET_SERVICES_BY_ID
-                           -> consultantId = extracted ID
-
-                        2) If user asks about a consultant's services/skills/competencies AND provides a person name (first + last) AND no consultantId:
-                           -> action = GET_SERVICES_BY_NAME
-                           -> firstName + lastName extracted (best effort)
-
-                        3) If user asks "which consultants have" a service/skill/competency (e.g., "Vilka konsulter har ..."):
-                           -> action = FIND_CONSULTANTS_BY_SERVICES
-                           -> services = extracted list of service tokens (best effort, keep original casing)
-                           -> matchMode = derived from wording ("och/and" vs "eller/or" vs commas)
-
-                        4) Otherwise -> OTHER
-
-                        Output rules:
-                        - Always output JSON only.
-                        - For LIST_ALL_SERVICES: consultantId/firstName/lastName/services/matchMode must all be null.
-                        - consultantId must be null unless action is GET_SERVICES_BY_ID.
-                        - firstName/lastName must be null unless action is GET_SERVICES_BY_NAME.
-                        - services and matchMode must be null unless action is FIND_CONSULTANTS_BY_SERVICES.
-                        - For FIND_CONSULTANTS_BY_SERVICES: services must be a non-empty array.
+                        Output JSON ONLY.
                         """)
-                .user(userInput)
+                .user(u)
                 .call()
                 .content();
 
         try {
             RawCommand rc = mapper.readValue(raw, RawCommand.class);
 
-            String action = rc.action() != null
-                    ? rc.action().trim().toUpperCase()
-                    : "OTHER";
-
-            String consultantId = normalize(rc.consultantId());
-            String firstName = normalize(rc.firstName());
-            String lastName = normalize(rc.lastName());
+            String action = normUpper(rc.action(), "OTHER");
+            String consultantId = normUpper(rc.consultantId(), null);
+            String firstName = norm(rc.firstName());
+            String lastName = norm(rc.lastName());
             List<String> services = normalizeList(rc.services());
-            String matchMode = normalize(rc.matchMode());
-            if (matchMode != null) matchMode = matchMode.toUpperCase();
+            String matchMode = normUpper(rc.matchMode(), null);
 
             switch (action) {
                 case "LIST_ALL_SERVICES" -> {
-                    consultantId = null;
-                    firstName = null;
-                    lastName = null;
-                    services = null;
-                    matchMode = null;
+                    return new Command("LIST_ALL_SERVICES", null, null, null, null, null);
                 }
                 case "GET_SERVICES_BY_ID" -> {
-                    firstName = null;
-                    lastName = null;
-                    services = null;
-                    matchMode = null;
+                    if (consultantId == null) return new Command("OTHER", null, null, null, null, null);
+                    return new Command("GET_SERVICES_BY_ID", consultantId, null, null, null, null);
                 }
                 case "GET_SERVICES_BY_NAME" -> {
-                    consultantId = null;
-                    services = null;
-                    matchMode = null;
+                    if (firstName == null || lastName == null) return new Command("OTHER", null, null, null, null, null);
+                    return new Command("GET_SERVICES_BY_NAME", null, firstName, lastName, null, null);
                 }
                 case "FIND_CONSULTANTS_BY_SERVICES" -> {
-                    consultantId = null;
-                    firstName = null;
-                    lastName = null;
-
-                    if (services == null || services.isEmpty()) {
-                        action = "OTHER";
-                        services = null;
-                        matchMode = null;
-                    } else {
-                        if (!"ALL".equals(matchMode) && !"ANY".equals(matchMode)) {
-                            matchMode = "ANY";
-                        }
-                    }
+                    if (services == null || services.isEmpty()) return new Command("OTHER", null, null, null, null, null);
+                    if (!"ALL".equals(matchMode) && !"ANY".equals(matchMode)) matchMode = "ANY";
+                    return new Command("FIND_CONSULTANTS_BY_SERVICES", null, null, null, services, matchMode);
                 }
                 default -> {
-                    action = "OTHER";
-                    consultantId = null;
-                    firstName = null;
-                    lastName = null;
-                    services = null;
-                    matchMode = null;
+                    return new Command("OTHER", null, null, null, null, null);
                 }
             }
-
-            return new Command(action, consultantId, firstName, lastName, services, matchMode);
 
         } catch (Exception e) {
             return new Command("OTHER", null, null, null, null, null);
         }
     }
 
-    private static String normalize(String s) {
+    private static boolean containsAny(String s, String... needles) {
+        for (String n : needles) if (s.contains(n)) return true;
+        return false;
+    }
+
+    private static String norm(String s) {
         if (s == null) return null;
         String t = s.trim();
         return t.isBlank() ? null : t;
     }
 
+    private static String normUpper(String s, String fallback) {
+        String t = norm(s);
+        return t == null ? fallback : t.toUpperCase(Locale.ROOT);
+    }
+
     private static final Set<String> SERVICE_STOPWORDS = Set.of(
-            // domain keywords
             "kompetens", "kompetensen", "kompetenser",
             "skill", "skills",
             "competency", "competencies",
             "service", "services",
             "tjänst", "tjänster",
-
-            // connectors that must never become service tokens
             "och", "eller", "and", "or"
     );
 
@@ -201,7 +187,7 @@ public class ServiceIntentClassifier {
                 .filter(Objects::nonNull)
                 .map(ServiceIntentClassifier::cleanServiceToken)
                 .filter(s -> !s.isBlank())
-                .filter(s -> !SERVICE_STOPWORDS.contains(s.toLowerCase()))
+                .filter(s -> !SERVICE_STOPWORDS.contains(s.toLowerCase(Locale.ROOT)))
                 .distinct()
                 .toList();
 

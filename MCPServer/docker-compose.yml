@@ -16,18 +16,18 @@ services:
       timeout: 5s
       retries: 20
 
-  app:
-    build: .
-    container_name: mcp-server
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/intelliplan
-      SPRING_DATASOURCE_USERNAME: intelliplan
-      SPRING_DATASOURCE_PASSWORD: intelliplan
-    ports:
-      - "9090:9090"
+  #app:
+  #  build: .
+  #  container_name: mcp-server
+  #  depends_on:
+  #    db:
+  #      condition: service_healthy
+  #  environment:
+  #    SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/intelliplan
+  #    SPRING_DATASOURCE_USERNAME: intelliplan
+  #    SPRING_DATASOURCE_PASSWORD: intelliplan
+  #  ports:
+  #    - "9090:9090"
 
 volumes:
   db_data:

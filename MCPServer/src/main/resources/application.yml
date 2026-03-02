@@ -4,17 +4,18 @@ spring:
 
   ai:
     mcp.server:
-      name: my-superhero-server
+      name: my-intelliplan-server
       version: 0.0.1
 
       # Using spring-ai-starter-mcp-server-webmvc
       type: sync
       instructions: "This server provides crud operations for intelliplan database"
       sse-endpoint: /sse
-      capabilities.completion: true
-      capabilities.prompt: true
-      capabilities.resource: true
+      capabilities.completion: false
+      capabilities.prompt: false
+      capabilities.resource: false
       capabilities.tool: true
+      tool-callback-converter: false
 
   datasource:
     url: jdbc:postgresql://localhost:5432/intelliplan
@@ -24,7 +25,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update   # eller create / create-drop
+      ddl-auto: update   # eller create / create-drop / none
     show-sql: true
     properties:
       hibernate:

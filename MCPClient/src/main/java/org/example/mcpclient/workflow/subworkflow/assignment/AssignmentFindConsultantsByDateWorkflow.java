@@ -14,36 +14,33 @@ public class AssignmentFindConsultantsByDateWorkflow {
 
         return toolClient.prompt()
                 .system("""
-                        You MUST call the tool assignment_find_consultants_by_date.
+                        You MUST call the tool assignment_find_consultants_by_date with:
+                        - date = "%s"
 
-                        Call it with:
-                        - date = the provided date in format YYYY-MM-DD
-
-                        After the tool returns, output a plain text table (NOT markdown).
-                        Do NOT use pipe '|' characters.
-                        Do NOT use dashed separator lines.
-
-                        Use fixed-width columns separated by spaces.
-
-                        Headers (exactly):
-                        ConsultantId  FirstName  LastName  EmploymentType
-
-                        Each row format:
-                        <consultantId>  <firstName>  <lastName>  <employmentType>
+                        After the tool returns:
 
                         If the returned list is empty, output exactly:
-                        No consultants found with assignments on date %s.
+                        No consultants found for date %s.
+
+                        Otherwise output a plain text table (NOT markdown).
+                        Do NOT use pipe '|' characters.
+                        Do NOT use dashed separator lines.
+                        Use fixed-width columns separated by 2+ spaces.
+                        Output ONLY the table.
+
+                        Headers (exactly):
+                        ConsultantId  FirstName  LastName  EmploymentType  Services Regions Restrictions
+
+                        Each row format:
+                        <consultantId> <FirstName>  <LastName>  <EmploymentType>  <Services> <Regions> <Restrictions>
 
                         Rules:
                         - Use ONLY the tool output.
                         - Do NOT invent data.
-                        - Do NOT include AssignmentCount.
-                        - Do NOT explain JSON.
+                        - Do NOT explain JSON or tools.
                         - Always respond in English.
-                        """.formatted(date))
-                .user("""
-                        List consultants that have assignments on date %s
-                        """.formatted(date))
+                        """.formatted(date, date))
+                .user("List consultants that have assignments on date: " + date)
                 .call()
                 .content();
     }

@@ -1,11 +1,13 @@
 package org.example.mcpclient.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.example.mcpclient.McpClientApplication;
 import org.example.mcpclient.dto.ChatRequest;
 import org.example.mcpclient.workflow.*;
 import org.example.mcpclient.workflow.subworkflow.assignment.*;
 import org.example.mcpclient.workflow.subworkflow.consultant.*;
+import org.example.mcpclient.workflow.subworkflow.customer.CustomerGetByIdWorkflow;
+import org.example.mcpclient.workflow.subworkflow.customer.CustomerListWorkflow;
+import org.example.mcpclient.workflow.subworkflow.customer.CustomerSearchWorkflow;
+import org.example.mcpclient.workflow.subworkflow.organization.*;
 import org.example.mcpclient.workflow.subworkflow.service.ConsultantServicesByIdWorkflow;
 import org.example.mcpclient.workflow.subworkflow.service.ConsultantServicesByNameWorkflow;
 import org.example.mcpclient.workflow.subworkflow.service.ConsultantsByServicesWorkflow;
@@ -14,7 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.tool.ToolCallbackProvider;
-import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
@@ -165,6 +166,67 @@ public class ChatService {
                 };
 
                 LOG.info("Answer:\n" + answer);
+                return answer;
+            }
+
+            if ("customer".equals(routeKey)) {
+                CustomerIntentClassifier classifier = new CustomerIntentClassifier(routingClient);
+                var cmd = classifier.classify(input);
+
+                LOG.info("Customer Action: " + cmd.action());
+
+                String answer = switch (cmd.action()) {
+                    case "GET_BY_ID" -> new CustomerGetByIdWorkflow(toolClient).run(cmd.customerId());
+                    case "SEARCH" -> new CustomerSearchWorkflow(toolClient).run(cmd.customerName(), cmd.region(), cmd.riskProfile());
+                    case "LIST_ALL" -> new CustomerListWorkflow(toolClient)
+                            .run();
+                    default -> {
+                        String domainPrompt = RoutingWorkflow.ROUTES.getOrDefault(routeKey, RoutingWorkflow.ROUTES.get("other"));
+                        yield new DomainWorkflow(toolClient).run(domainPrompt, input);
+                    }
+                };
+
+                LOG.info("Answer:\n" + answer);
+                return answer;
+            }
+
+            if ("organization".equals(routeKey)) {
+
+                OrganizationIntentClassifier classifier = new OrganizationIntentClassifier(routingClient);
+                var cmd = classifier.classify(input);
+
+                LOG.info("Organization Action: {}", cmd.action());
+
+                String answer = switch (cmd.action()) {
+
+                    case "GET_REGION_BY_CONSULTANT_ID" ->
+                            new OrganizationGetRegionByConsultantIdWorkflow(toolClient)
+                                    .run(cmd.consultantId());
+                    case "GET_REGION_BY_CONSULTANT_NAME" ->
+                            new OrganizationGetRegionByConsultantNameWorkflow(toolClient)
+                                    .run(cmd.firstName(), cmd.lastName());
+                    case "LIST_CONSULTANTS_BY_REGION" ->
+                            new OrganizationListConsultantsByRegionWorkflow(toolClient)
+                                    .run(cmd.region());
+                    case "COUNT_CONSULTANTS_BY_REGION" ->
+                            new OrganizationCountConsultantsByRegionWorkflow(toolClient).run(cmd.region());
+                    case "organization_count_consultants_by_region" ->
+                            new OrganizationListRegionsWithCountsWorkflow(toolClient).run();
+                    case "GET_REGION_WITH_MOST_CONSULTANTS" ->
+                            new OrganizationGetRegionWithMostConsultantsWorkflow(toolClient).run();
+                    case "LIST_REGIONS" ->
+                            new OrganizationListRegionsWorkflow(toolClient).run();
+
+                    default -> {
+                        String domainPrompt = RoutingWorkflow.ROUTES.getOrDefault(
+                                routeKey,
+                                RoutingWorkflow.ROUTES.get("other")
+                        );
+                        yield new DomainWorkflow(toolClient).run(domainPrompt, input);
+                    }
+                };
+
+                LOG.info("Answer:\n{}", answer);
                 return answer;
             }
 

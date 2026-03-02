@@ -82,6 +82,54 @@ public class CustomerService {
     }
 
     @Tool(
+            name = "customer_search",
+            description = "Search customers by optional filters: customerName (contains, case-insensitive), region (exact, case-insensitive), riskProfile (LOW|MEDIUM|HIGH). Any parameter may be null."
+    )
+    @Transactional(readOnly = true)
+    public List<CustomerDTO> search(String customerName, String region, String riskProfile) {
+
+        String name = ValidationUtils.trimToNull(customerName);
+        String reg = ValidationUtils.trimToNull(region);
+        String rp = ValidationUtils.trimToNull(riskProfile);
+        if (rp != null) rp = rp.toUpperCase();
+
+        if (rp != null && !ALLOWED_RISK_PROFILES.contains(rp)) {
+            throw new BadRequestException("riskProfile måste vara en av: " + ALLOWED_RISK_PROFILES);
+        }
+
+        List<CustomerEntity> result;
+
+        if (name != null && reg != null && rp != null) {
+            result = customerRepository
+                    .findByCustomerNameContainingIgnoreCaseAndRegionIgnoreCaseAndRiskProfileIgnoreCase(name, reg, rp);
+        } else if (name != null && reg != null) {
+            result = customerRepository
+                    .findByCustomerNameContainingIgnoreCaseAndRegionIgnoreCase(name, reg);
+        } else if (name != null && rp != null) {
+            result = customerRepository
+                    .findByCustomerNameContainingIgnoreCaseAndRiskProfileIgnoreCase(name, rp);
+        } else if (reg != null && rp != null) {
+            result = customerRepository
+                    .findByRegionIgnoreCaseAndRiskProfileIgnoreCase(reg, rp);
+        } else if (name != null) {
+            result = customerRepository
+                    .findByCustomerNameContainingIgnoreCase(name);
+        } else if (reg != null) {
+            result = customerRepository
+                    .findByRegionIgnoreCase(reg);
+        } else if (rp != null) {
+            result = customerRepository
+                    .findByRiskProfileIgnoreCase(rp);
+        } else {
+            result = customerRepository.findAll();
+        }
+
+        return result.stream()
+                .map(customerMapper::toDto)
+                .toList();
+    }
+
+    @Tool(
             name = "customer_list",
             description = "List all customers."
     )

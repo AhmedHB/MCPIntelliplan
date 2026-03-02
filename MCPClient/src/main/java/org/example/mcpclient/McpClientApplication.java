@@ -44,11 +44,11 @@ public class McpClientApplication {
 
         return args -> {
             String input = assignmentInput(0);
-            //String input = consultantInput(5);
-            //String input = serviceInput(7);
-            //String input = customerInput();
-            //String input = organisationInput();
-            //String input = otherInput();
+            //String input = consultantInput(7);
+            //String input = serviceInput(5);
+            //String input = customerInput(3);
+            //String input = organisationInput(7);
+            //String input = otherInput(0);
 
             ChatRequest chatRequest = new ChatRequest(input, "");
             String answer = chatService.chat(chatRequest);
@@ -101,8 +101,8 @@ public class McpClientApplication {
                 "Vilka kompetenser har konsult Karin Håkansson?",
                 "Vilka kompetenser har konsult Karin Lundqvist?",
                 "Vilka konsulter har kompetensen Picker och TeamLead?",
-                "Vilka konsulter har Picker och TeamLead?",
-                "Vilka konsulter har ForkliftOperator?",
+                //"Vilka konsulter har Picker och TeamLead?",
+                //"Vilka konsulter har ForkliftOperator?",
                 "Vilka konsulter har kompetensen ForkliftOperator?",
                 "Lista alla kompetenser."
                 //"Skapa en ny kompetens som heter AI-expert.",
@@ -112,24 +112,27 @@ public class McpClientApplication {
         return input[index];
     }
 
-    private String customerInput() {
+    private String customerInput(int index) {
         String[] input = Arrays.asList(
                 "Lista alla kunder.",
-                "Visa information om kund CUST_WAREHOUSE_10."
+                "Visa information om kund CUST_WAREHOUSE_10.",
+                "Visa alla kunder med riskprofil MEDIUM.",
+                "Visa alla kunder i region malmö."
                 //"Skapa en ny kund som heter UPS och som har kundid CUST_WAREHOUSE_11.",
                 //"Ta bort kund UPS, CUST_WAREHOUSE_11."
         ).toArray(String[]::new);
 
-        return input[0];
+        return input[index];
     }
 
-    private String organisationInput() {
+    private String organisationInput(int index) {
         String[] input = Arrays.asList(
+                        "Vilka regioner finns?",
                         "Vilken region tillhör konsult Karin Lundqvist, CONS_100086?",
-                        "Vilka konsulter är i region Stockholm?",
-                        "Vilka regioner finns i systemet?",
-                        "Visa alla konsulter i region Stockholm.",
-                        "Hur många konsulter finns i region göteberg?",
+                        "Vilken region tillhör konsult Johan Björk?",
+                        "Vilka konsulter är i region Linköping.",
+                        "Hur många konsulter finns i region Linköping?",
+                        "Hur många konsulter finns i region Stockholm?",
                         "Lista alla regioner och antal konsulter per region.",
                         "Vilken region har flest konsulter?"
                         //"Skapa en ny region som heter Nyköping med regionskod SE-NYK.",
@@ -139,15 +142,15 @@ public class McpClientApplication {
                 .stream()
                 .toArray(String[]::new);
 
-        return input[0];
+        return input[index];
     }
 
-    private String otherInput() {
+    private String otherInput(int index) {
         String[] input = Arrays.asList(
                 "Vad är vädret?.",
                 "Vad är klockan?."
         ).toArray(String[]::new);
 
-        return input[1];
+        return input[index];
     }
 }
