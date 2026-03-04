@@ -9,17 +9,15 @@ AI](https://img.shields.io/badge/Spring_AI-MCP-orange)
 
 ## Overview
 
-**MCP Client** is a Spring Boot CLI application that connects to an MCP
+**MCP Client** is a Spring Boot REST application that connects to an MCP
 Server using Spring AI and the Model Context Protocol (MCP).
 
 The application:
 
--   Starts
--   Executes a configured scenario
--   Prints the result in the console
--   Shuts itself down
-
-It does NOT expose a web server.
+-   Starts a REST service
+-   Accepts chat requests over HTTP
+-   Routes/classifies requests and calls MCP tools when needed
+-   Returns the formatted answer in the HTTP response
 
 All deterministic business logic lives in the MCP Server.
 
@@ -83,6 +81,40 @@ mvn spring-boot:run -Pcloud
 
 ------------------------------------------------------------------------
 
+# REST API
+
+Base URL:
+
+http://localhost:8080
+
+Endpoint:
+
+POST /api/chat
+
+Request body:
+
+```json
+{
+  "message": "Visa uppgifter om konsult CONS_100001?",
+  "prompt": "",
+  "conversationId": "demo-session-1"
+}
+```
+
+Response body:
+
+```text
+ConsultantId  FirstName  LastName   EmploymentType  Services                   Regions   Restrictions
+CONS_100001   Anna       Eriksson   Employee         InventoryControl;Picker    SE-MAL
+```
+
+Notes:
+
+-   `conversationId` is used for chat memory/context between requests.
+-   If `conversationId` is omitted or blank, default conversation is used.
+
+------------------------------------------------------------------------
+
 # How a Sentence Is Processed (Agent Flow)
 
 The MCP Client does NOT directly call tools immediately.
@@ -125,41 +157,6 @@ All validation and matching logic lives in the MCP Server.
 
 ------------------------------------------------------------------------
 
-# Manual Scenario Configuration (Important)
-
-The client currently runs a manually selected scenario inside:
-
-McpClientApplication.java
-
-Example:
-
-@Bean public CommandLineRunner scenarioLLM(ChatClient.Builder
-chatClientBuilder, ToolCallbackProvider tools,
-ConfigurableApplicationContext context) {
-
-    return args -> {
-        String input = assignmentInput(0);
-        //String input = consultantInput(5);
-        //String input = serviceInput(7);
-        //String input = customerInput();
-        //String input = organisationInput();
-        //String input = otherInput();
-
-        ChatRequest chatRequest = new ChatRequest(input, "");
-        String answer = chatService.chat(chatRequest);
-
-        context.close();
-    };
-
-}
-
-You must manually select which scenario to run by
-commenting/uncommenting input lines.
-
-Only one scenario runs per execution.
-
-------------------------------------------------------------------------
-
 # Architecture Overview
 
 User Input\
@@ -174,7 +171,7 @@ MCP Server (Business Logic + Database)\
 ↓\
 Structured Result\
 ↓\
-Formatted Console Output
+REST Response
 
 ------------------------------------------------------------------------
 
@@ -197,8 +194,7 @@ The MCP Server:
 
 # Stop the Application
 
-The application exits automatically after executing the configured
-scenario.
+Stop the running Spring Boot process with Ctrl+C.
 
 ------------------------------------------------------------------------
 

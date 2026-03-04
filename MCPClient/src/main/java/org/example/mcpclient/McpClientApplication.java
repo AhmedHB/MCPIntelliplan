@@ -37,7 +37,7 @@ public class McpClientApplication {
 
     private final ChatService chatService;
 
-    @Bean
+    /*@Bean
     public CommandLineRunner scenarioLLM(ChatClient.Builder chatClientBuilder,
                                          ToolCallbackProvider tools,
                                          ConfigurableApplicationContext context) {
@@ -55,7 +55,7 @@ public class McpClientApplication {
 
             context.close();
         };
-    }
+    }*/
 
     // ============================================================
     // TEST INPUTS

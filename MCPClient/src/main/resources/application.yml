@@ -2,8 +2,8 @@ spring:
   application:
     name: MCPClient
 
-  main:
-    web-application-type: none
+  #main:
+    #web-application-type: none
 
   ai:
     openai:
@@ -41,6 +41,19 @@ spring:
           connections:
             intelliplan:
               url: http://localhost:9090/sse
+
+    vectorstore:
+      milvus:
+        initialize-schema: true
+        client:
+          host: localhost
+          port: 19530
+          username: root
+          password: Milvus
+        database-name: default
+        collection-name: chat_memory_store
+        index-type: IVF_FLAT
+        metric-type: COSINE
 
 logging:
   level:

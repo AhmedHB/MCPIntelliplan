@@ -15,7 +15,10 @@ import org.example.mcpclient.workflow.subworkflow.service.ServiceListWorkflow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.vectorstore.VectorStoreChatMemoryAdvisor;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.tool.ToolCallbackProvider;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
@@ -25,13 +28,26 @@ public class ChatService {
     private static final Logger LOG =
             LoggerFactory.getLogger(ChatService.class);
 
-    private ChatClient.Builder chatClientBuilder;
-    private ToolCallbackProvider tools;
+    // Build once, reuse
+    private final ChatClient routingClient; // NO TOOLS
+    private final ChatClient toolClient;    // WITH TOOLS
 
     public ChatService(ChatClient.Builder chatClientBuilder,
-                       ToolCallbackProvider tools) {
-        this.chatClientBuilder = chatClientBuilder;
-        this.tools = tools;
+                       ToolCallbackProvider tools,
+                       VectorStore vectorStore) {
+
+        var memoryAdvisor = VectorStoreChatMemoryAdvisor.builder(vectorStore).build();
+
+        // Routing client (NO TOOLS) – used for routing + intent classifiers
+        this.routingClient = chatClientBuilder
+                .defaultAdvisors(memoryAdvisor)
+                .build();
+
+        // Tool client (WITH TOOLS) – build ONCE so tools don't accumulate
+        this.toolClient = chatClientBuilder
+                .defaultToolCallbacks(tools)
+                .defaultAdvisors(memoryAdvisor)
+                .build();
     }
 
     /*
@@ -77,152 +93,216 @@ public class ChatService {
 
     public String chat(ChatRequest request) {
         String input = request.message();
+        String conversationId = request.conversationId() == null || request.conversationId().isBlank()
+                ? ChatMemory.DEFAULT_CONVERSATION_ID
+                : request.conversationId();
 
         try {
-            LOG.info("User Input: " + input);
+            LOG.info("User Input: {}", input);
+            LOG.info("ConversationId: {}", conversationId);
 
-            // Routing client (NO TOOLS)
-            ChatClient routingClient = chatClientBuilder.build();
-            RoutingWorkflow routingWorkflow = new RoutingWorkflow(routingClient);
-            String routeKey = routingWorkflow.route(input);
-
-            LOG.info("Route: " + routeKey);
-
-            // Tool client (WITH TOOLS)
-            ChatClient toolClient = chatClientBuilder
-                    .defaultToolCallbacks(tools)
+            ChatClient requestRoutingClient = routingClient
+                    .mutate()
+                    .defaultAdvisors(spec -> spec
+                            .param(ChatMemory.CONVERSATION_ID, conversationId)
+                            .param(VectorStoreChatMemoryAdvisor.TOP_K, 10))
                     .build();
 
+            ChatClient requestToolClient = toolClient
+                    .mutate()
+                    .defaultAdvisors(spec -> spec
+                            .param(ChatMemory.CONVERSATION_ID, conversationId)
+                            .param(VectorStoreChatMemoryAdvisor.TOP_K, 10))
+                    .build();
+
+            // Routing
+            RoutingWorkflow routingWorkflow = new RoutingWorkflow(requestRoutingClient);
+            String routeKey = routingWorkflow.route(input);
+
+            LOG.info("Route: {}", routeKey);
+
             if ("assignment".equals(routeKey)) {
-                AssignmentIntentClassifier classifier = new AssignmentIntentClassifier(routingClient);
+                AssignmentIntentClassifier classifier = new AssignmentIntentClassifier(requestRoutingClient);
                 var cmd = classifier.classify(input);
 
-                LOG.info("Assignment Action: " + cmd.action());
+                LOG.info("Assignment Action: {}", cmd.action());
 
                 String answer = switch (cmd.action()) {
-                    case "COUNT_BY_STATUS" -> new AssignmentCountByStatusWorkflow(toolClient).run(cmd.status());
-                    case "FIND_BY_STATUS" -> new AssignmentFindByStatusWorkflow(toolClient).run(cmd.status());
-                    case "COUNT_BY_DATE" -> new AssignmentCountByDateWorkflow(toolClient)
-                            .run(cmd.date().format(DateTimeFormatter.ISO_LOCAL_DATE));
-                    case "FIND_BY_DATE" -> new AssignmentFindByDateWorkflow(toolClient)
-                            .run(cmd.date().format(DateTimeFormatter.ISO_LOCAL_DATE));
-                    case "CONSULTANTS_ON_DATE" -> new AssignmentFindConsultantsByDateWorkflow(toolClient)
-                            .run(cmd.date().format(DateTimeFormatter.ISO_LOCAL_DATE));
-                    case "WORKING_ON_DATE" -> new ConsultantWorkingOnDateWorkflow(toolClient)
-                            .run(cmd.name(), cmd.date().format(DateTimeFormatter.ISO_LOCAL_DATE));
-                    //AssignmentSuggestConsultantsWorkflow
-                    //AssignmentSuggestConsultantsDebugWorkflow
-                    case "SUGGEST_CONSULTANTS" -> new AssignmentSuggestConsultantsbyCodeWorkflow(toolClient)
-                            .run(cmd.assignmentId(), 5);
-                    default -> {
-                        String domainPrompt = RoutingWorkflow.ROUTES.getOrDefault(routeKey, RoutingWorkflow.ROUTES.get("other"));
-                        yield new DomainWorkflow(toolClient).run(domainPrompt, input);
-                    }
-                };
+                    case "COUNT_BY_STATUS" ->
+                            new AssignmentCountByStatusWorkflow(requestToolClient).run(cmd.status());
 
-                LOG.info("Answer:\n" + answer);
-                return answer;
-            }
+                    case "FIND_BY_STATUS" ->
+                            new AssignmentFindByStatusWorkflow(requestToolClient).run(cmd.status());
 
-            if ("consultant".equals(routeKey)) {
-                ConsultantIntentClassifier classifier = new ConsultantIntentClassifier(routingClient);
-                var cmd = classifier.classify(input);
+                    case "COUNT_BY_DATE" ->
+                            new AssignmentCountByDateWorkflow(requestToolClient)
+                                    .run(cmd.date().format(DateTimeFormatter.ISO_LOCAL_DATE));
 
-                LOG.info("Consultant Action: " + cmd.action());
+                    case "FIND_BY_DATE" ->
+                            new AssignmentFindByDateWorkflow(requestToolClient)
+                                    .run(cmd.date().format(DateTimeFormatter.ISO_LOCAL_DATE));
 
-                String answer = switch (cmd.action()) {
-                    case "LIST_ALL" -> new ConsultantListWorkflow(toolClient).run();
-                    case "GET_BY_ID" -> new ConsultantDetailByIdWorkflow(toolClient).run(cmd.consultantId());
-                    case "GET_BY_NAME" -> new ConsultantDetailByNameWorkflow(toolClient).run(cmd.firstName(), cmd.lastName());
-                    case "FIND_AVAILABLE_BY_DATE" -> new ConsultantAvailableByDateWorkflow(toolClient)
-                            .run(cmd.date().format(DateTimeFormatter.ISO_LOCAL_DATE));
-                    case "LIST_SICK_BY_DATE" -> new ConsultantSickByDateWorkflow(toolClient)
-                            .run(cmd.date().format(DateTimeFormatter.ISO_LOCAL_DATE));
-                    default -> {
-                        String domainPrompt = RoutingWorkflow.ROUTES.getOrDefault(routeKey, RoutingWorkflow.ROUTES.get("other"));
-                        yield new DomainWorkflow(toolClient).run(domainPrompt, input);
-                    }
-                };
+                    case "CONSULTANTS_ON_DATE" ->
+                            new AssignmentFindConsultantsByDateWorkflow(requestToolClient)
+                                    .run(cmd.date().format(DateTimeFormatter.ISO_LOCAL_DATE));
 
-                LOG.info("Answer:\n" + answer);
-                return answer;
-            }
+                    case "WORKING_ON_DATE" ->
+                            new ConsultantWorkingOnDateWorkflow(requestToolClient)
+                                    .run(cmd.name(), cmd.date().format(DateTimeFormatter.ISO_LOCAL_DATE));
 
-            if ("service".equals(routeKey)) {
-                ServiceIntentClassifier classifier = new ServiceIntentClassifier(routingClient);
-                var cmd = classifier.classify(input);
-
-                LOG.info("Service Action: " + cmd.action());
-
-                String answer = switch (cmd.action()) {
-                    case "GET_SERVICES_BY_ID" -> new ConsultantServicesByIdWorkflow(toolClient).run(cmd.consultantId());
-                    case "GET_SERVICES_BY_NAME" -> new ConsultantServicesByNameWorkflow(toolClient).run(cmd.firstName(), cmd.lastName());
-                    case "FIND_CONSULTANTS_BY_SERVICES" -> new ConsultantsByServicesWorkflow(toolClient).run(cmd.services(), cmd.matchMode());
-                    case "LIST_ALL_SERVICES" -> new ServiceListWorkflow(toolClient).run();
-                    default -> {
-                        String domainPrompt = RoutingWorkflow.ROUTES.getOrDefault(routeKey, RoutingWorkflow.ROUTES.get("other"));
-                        yield new DomainWorkflow(toolClient).run(domainPrompt, input);
-                    }
-                };
-
-                LOG.info("Answer:\n" + answer);
-                return answer;
-            }
-
-            if ("customer".equals(routeKey)) {
-                CustomerIntentClassifier classifier = new CustomerIntentClassifier(routingClient);
-                var cmd = classifier.classify(input);
-
-                LOG.info("Customer Action: " + cmd.action());
-
-                String answer = switch (cmd.action()) {
-                    case "GET_BY_ID" -> new CustomerGetByIdWorkflow(toolClient).run(cmd.customerId());
-                    case "SEARCH" -> new CustomerSearchWorkflow(toolClient).run(cmd.customerName(), cmd.region(), cmd.riskProfile());
-                    case "LIST_ALL" -> new CustomerListWorkflow(toolClient)
-                            .run();
-                    default -> {
-                        String domainPrompt = RoutingWorkflow.ROUTES.getOrDefault(routeKey, RoutingWorkflow.ROUTES.get("other"));
-                        yield new DomainWorkflow(toolClient).run(domainPrompt, input);
-                    }
-                };
-
-                LOG.info("Answer:\n" + answer);
-                return answer;
-            }
-
-            if ("organization".equals(routeKey)) {
-
-                OrganizationIntentClassifier classifier = new OrganizationIntentClassifier(routingClient);
-                var cmd = classifier.classify(input);
-
-                LOG.info("Organization Action: {}", cmd.action());
-
-                String answer = switch (cmd.action()) {
-
-                    case "GET_REGION_BY_CONSULTANT_ID" ->
-                            new OrganizationGetRegionByConsultantIdWorkflow(toolClient)
-                                    .run(cmd.consultantId());
-                    case "GET_REGION_BY_CONSULTANT_NAME" ->
-                            new OrganizationGetRegionByConsultantNameWorkflow(toolClient)
-                                    .run(cmd.firstName(), cmd.lastName());
-                    case "LIST_CONSULTANTS_BY_REGION" ->
-                            new OrganizationListConsultantsByRegionWorkflow(toolClient)
-                                    .run(cmd.region());
-                    case "COUNT_CONSULTANTS_BY_REGION" ->
-                            new OrganizationCountConsultantsByRegionWorkflow(toolClient).run(cmd.region());
-                    case "organization_count_consultants_by_region" ->
-                            new OrganizationListRegionsWithCountsWorkflow(toolClient).run();
-                    case "GET_REGION_WITH_MOST_CONSULTANTS" ->
-                            new OrganizationGetRegionWithMostConsultantsWorkflow(toolClient).run();
-                    case "LIST_REGIONS" ->
-                            new OrganizationListRegionsWorkflow(toolClient).run();
+                    case "SUGGEST_CONSULTANTS" ->
+                            new AssignmentSuggestConsultantsbyCodeWorkflow(requestToolClient)
+                                    .run(cmd.assignmentId(), 5);
 
                     default -> {
                         String domainPrompt = RoutingWorkflow.ROUTES.getOrDefault(
                                 routeKey,
                                 RoutingWorkflow.ROUTES.get("other")
                         );
-                        yield new DomainWorkflow(toolClient).run(domainPrompt, input);
+                        yield new DomainWorkflow(requestToolClient).run(domainPrompt, input);
+                    }
+                };
+
+                LOG.info("Answer:\n{}", answer);
+                return answer;
+            }
+
+            if ("consultant".equals(routeKey)) {
+                ConsultantIntentClassifier classifier = new ConsultantIntentClassifier(requestRoutingClient);
+                var cmd = classifier.classify(input);
+
+                LOG.info("Consultant Action: {}", cmd.action());
+
+                String answer = switch (cmd.action()) {
+                    case "LIST_ALL" ->
+                            new ConsultantListWorkflow(requestToolClient).run();
+
+                    case "GET_BY_ID" ->
+                            new ConsultantDetailByIdWorkflow(requestToolClient).run(cmd.consultantId());
+
+                    case "GET_BY_NAME" ->
+                            new ConsultantDetailByNameWorkflow(requestToolClient).run(cmd.firstName(), cmd.lastName());
+
+                    case "FIND_AVAILABLE_BY_DATE" ->
+                            new ConsultantAvailableByDateWorkflow(requestToolClient)
+                                    .run(cmd.date().format(DateTimeFormatter.ISO_LOCAL_DATE));
+
+                    case "LIST_SICK_BY_DATE" ->
+                            new ConsultantSickByDateWorkflow(requestToolClient)
+                                    .run(cmd.date().format(DateTimeFormatter.ISO_LOCAL_DATE));
+
+                    default -> {
+                        String domainPrompt = RoutingWorkflow.ROUTES.getOrDefault(
+                                routeKey,
+                                RoutingWorkflow.ROUTES.get("other")
+                        );
+                        yield new DomainWorkflow(requestToolClient).run(domainPrompt, input);
+                    }
+                };
+
+                LOG.info("Answer:\n{}", answer);
+                return answer;
+            }
+
+            if ("service".equals(routeKey)) {
+                ServiceIntentClassifier classifier = new ServiceIntentClassifier(requestRoutingClient);
+                var cmd = classifier.classify(input);
+
+                LOG.info("Service Action: {}", cmd.action());
+
+                String answer = switch (cmd.action()) {
+                    case "GET_SERVICES_BY_ID" ->
+                            new ConsultantServicesByIdWorkflow(requestToolClient).run(cmd.consultantId());
+
+                    case "GET_SERVICES_BY_NAME" ->
+                            new ConsultantServicesByNameWorkflow(requestToolClient).run(cmd.firstName(), cmd.lastName());
+
+                    case "FIND_CONSULTANTS_BY_SERVICES" ->
+                            new ConsultantsByServicesWorkflow(requestToolClient).run(cmd.services(), cmd.matchMode());
+
+                    case "LIST_ALL_SERVICES" ->
+                            new ServiceListWorkflow(requestToolClient).run();
+
+                    default -> {
+                        String domainPrompt = RoutingWorkflow.ROUTES.getOrDefault(
+                                routeKey,
+                                RoutingWorkflow.ROUTES.get("other")
+                        );
+                        yield new DomainWorkflow(requestToolClient).run(domainPrompt, input);
+                    }
+                };
+
+                LOG.info("Answer:\n{}", answer);
+                return answer;
+            }
+
+            if ("customer".equals(routeKey)) {
+                CustomerIntentClassifier classifier = new CustomerIntentClassifier(requestRoutingClient);
+                var cmd = classifier.classify(input);
+
+                LOG.info("Customer Action: {}", cmd.action());
+
+                String answer = switch (cmd.action()) {
+                    case "GET_BY_ID" ->
+                            new CustomerGetByIdWorkflow(requestToolClient).run(cmd.customerId());
+
+                    case "SEARCH" ->
+                            new CustomerSearchWorkflow(requestToolClient).run(cmd.customerName(), cmd.region(), cmd.riskProfile());
+
+                    case "LIST_ALL" ->
+                            new CustomerListWorkflow(requestToolClient).run();
+
+                    default -> {
+                        String domainPrompt = RoutingWorkflow.ROUTES.getOrDefault(
+                                routeKey,
+                                RoutingWorkflow.ROUTES.get("other")
+                        );
+                        yield new DomainWorkflow(requestToolClient).run(domainPrompt, input);
+                    }
+                };
+
+                LOG.info("Answer:\n{}", answer);
+                return answer;
+            }
+
+            if ("organization".equals(routeKey)) {
+                OrganizationIntentClassifier classifier = new OrganizationIntentClassifier(requestRoutingClient);
+                var cmd = classifier.classify(input);
+
+                LOG.info("Organization Action: {}", cmd.action());
+
+                String answer = switch (cmd.action()) {
+                    case "GET_REGION_BY_CONSULTANT_ID" ->
+                            new OrganizationGetRegionByConsultantIdWorkflow(requestToolClient)
+                                    .run(cmd.consultantId());
+
+                    case "GET_REGION_BY_CONSULTANT_NAME" ->
+                            new OrganizationGetRegionByConsultantNameWorkflow(requestToolClient)
+                                    .run(cmd.firstName(), cmd.lastName());
+
+                    case "LIST_CONSULTANTS_BY_REGION" ->
+                            new OrganizationListConsultantsByRegionWorkflow(requestToolClient)
+                                    .run(cmd.region());
+
+                    case "COUNT_CONSULTANTS_BY_REGION" ->
+                            new OrganizationCountConsultantsByRegionWorkflow(requestToolClient)
+                                    .run(cmd.region());
+
+                    case "organization_count_consultants_by_region" ->
+                            new OrganizationListRegionsWithCountsWorkflow(requestToolClient).run();
+
+                    case "GET_REGION_WITH_MOST_CONSULTANTS" ->
+                            new OrganizationGetRegionWithMostConsultantsWorkflow(requestToolClient).run();
+
+                    case "LIST_REGIONS" ->
+                            new OrganizationListRegionsWorkflow(requestToolClient).run();
+
+                    default -> {
+                        String domainPrompt = RoutingWorkflow.ROUTES.getOrDefault(
+                                routeKey,
+                                RoutingWorkflow.ROUTES.get("other")
+                        );
+                        yield new DomainWorkflow(requestToolClient).run(domainPrompt, input);
                     }
                 };
 
@@ -231,15 +311,19 @@ public class ChatService {
             }
 
             // Other domains
-            String domainPrompt = RoutingWorkflow.ROUTES.getOrDefault(routeKey, RoutingWorkflow.ROUTES.get("other"));
-            String answer = new DomainWorkflow(toolClient).run(domainPrompt, input);
-            LOG.info("Answer:\n" + answer);
+            String domainPrompt = RoutingWorkflow.ROUTES.getOrDefault(
+                    routeKey,
+                    RoutingWorkflow.ROUTES.get("other")
+            );
+            String answer = new DomainWorkflow(requestToolClient).run(domainPrompt, input);
+
+            LOG.info("Answer:\n{}", answer);
             return answer;
 
         } catch (Exception e) {
             LOG.error("Error during execution", e);
             String answer = "An error occurred while processing the request.";
-            LOG.info("Answer:\n" + answer);
+            LOG.info("Answer:\n{}", answer);
             return answer;
         }
     }

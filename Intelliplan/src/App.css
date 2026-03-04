@@ -1,0 +1,136 @@
+.App {
+  background: linear-gradient(180deg, #f4f6fb 0%, #e8eef8 100%);
+  min-height: 100vh;
+  padding: 24px 16px;
+  box-sizing: border-box;
+}
+
+.chat-shell {
+  width: min(840px, 100%);
+  margin: 0 auto;
+  background: #ffffff;
+  border: 1px solid #d7deeb;
+  border-radius: 14px;
+  box-shadow: 0 16px 30px rgba(37, 53, 87, 0.08);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-title {
+  margin: 0;
+  color: #17223a;
+  font-size: 1.6rem;
+}
+
+.chat-subtitle {
+  margin: 0;
+  color: #4f5b78;
+  font-size: 0.95rem;
+}
+
+.chat-window {
+  min-height: 360px;
+  max-height: 58vh;
+  overflow-y: auto;
+  border: 1px solid #d7deeb;
+  border-radius: 12px;
+  background: #f8faff;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chat-empty {
+  margin: auto;
+  color: #607190;
+}
+
+.chat-message {
+  max-width: 84%;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.chat-message strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.82rem;
+}
+
+.chat-message-body {
+  white-space: pre-wrap;
+  line-height: 1.45;
+}
+
+.chat-message-user {
+  align-self: flex-end;
+  background: #d9e7ff;
+  color: #1a2e54;
+}
+
+.chat-message-assistant {
+  align-self: flex-start;
+  background: #edf2ff;
+  color: #202d4d;
+}
+
+.chat-error {
+  margin: 0;
+  color: #9f1d2d;
+  background: #ffe8ea;
+  border: 1px solid #ffcfd5;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.chat-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+}
+
+.chat-input {
+  border: 1px solid #c6d0e3;
+  border-radius: 10px;
+  padding: 12px;
+  font: inherit;
+}
+
+.chat-send {
+  border: none;
+  border-radius: 10px;
+  padding: 0 18px;
+  background: #1e4fd8;
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chat-send:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+@media (max-width: 640px) {
+  .chat-window {
+    min-height: 52vh;
+  }
+
+  .chat-message {
+    max-width: 94%;
+  }
+}

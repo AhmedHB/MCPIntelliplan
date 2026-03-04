@@ -266,12 +266,12 @@ public class RoutingWorkflow {
                 - Regions/pools -> organization
                 - Otherwise -> other
 
-                Input: "%s"
                 Output:
-                """.formatted(keys, in);
+                """.formatted(keys);
 
         String raw = chatClient.prompt()
                 .system(routingPrompt)
+                .user(in)
                 .call()
                 .content();
 

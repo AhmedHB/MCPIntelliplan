@@ -36,3 +36,14 @@ mvn spring-boot:run -Plocal \
 
 mvn spring-boot:run -Pcloud \
   -Dspring-boot.run.jvmArguments="--enable-native-access=ALL-UNNAMED"
+
+//-----------------------------------------------------
+
+curl -s -X POST http://localhost:8080/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Föreslå konsulter till uppdraget ASSIGN_300009"}'
+
+
+curl -s -X POST http://localhost:8080/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Visa uppgifter om konsult CONS_100001?"}'
