@@ -15,6 +15,7 @@ the Model Context Protocol (MCP).
 
 The solution consists of:
 
+-   🖥 Frontend (React) -- Web UI for planning workflows and user interaction
 -   🧠 MCP Client -- LLM-powered routing, intent classification and tool
     orchestration
 -   ⚙️ MCP Server -- Deterministic business logic and validation layer
@@ -28,6 +29,8 @@ deterministic backend logic in a clean, enterprise-style architecture.
 # 🏗 System Architecture
 
 User\
+↓\
+Frontend (React)\
 ↓\
 MCP Client (LLM: Routing + Intent Classification)\
 ↓\
@@ -52,8 +55,28 @@ Database (PostgreSQL)
 
 # 📦 Project Structure
 
-MCPIntelliplan/ ├── MCPServer/ (Spring Boot MCP backend) ├── MCPClient/
-(Spring Boot CLI LLM client) ├── docker-compose.yml └── README.md
+MCPIntelliplan/\
+├── Intelliplan/ (React frontend)\
+├── MCPServer/ (Spring Boot MCP backend)\
+├── MCPClient/ (Spring Boot LLM client)\
+├── docker-compose.yml\
+└── README.md
+
+------------------------------------------------------------------------
+
+# 🖥 Frontend (React)
+
+The frontend application lives in `Intelliplan/` and provides the web UI.
+
+Run:
+
+cd Intelliplan\
+npm install\
+npm start
+
+Default URL:
+
+http://localhost:3000
 
 ------------------------------------------------------------------------
 
@@ -132,11 +155,21 @@ User: "Föreslå konsulter till uppdraget ASSIGN_300009"
 
 # 🚀 How to Run Everything
 
-1.  Start database docker-compose up -d
+1.  Start database\
+    docker-compose up -d
 
-2.  Start MCP Server cd MCPServer mvn spring-boot:run
+2.  Start MCP Server\
+    cd MCPServer\
+    mvn spring-boot:run
 
-3.  Start MCP Client cd MCPClient mvn spring-boot:run -Plocal
+3.  Start MCP Client\
+    cd MCPClient\
+    mvn spring-boot:run -Plocal
+
+4.  Start Frontend\
+    cd Intelliplan\
+    npm install\
+    npm start
 
 ------------------------------------------------------------------------
 
