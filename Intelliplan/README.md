@@ -1,6 +1,6 @@
 # IntelliPlan Chat
 
-## Skärmbild
+## Översikt
 
 ![IntelliPlan Chat UI](docs/chat-ui.png)
 
