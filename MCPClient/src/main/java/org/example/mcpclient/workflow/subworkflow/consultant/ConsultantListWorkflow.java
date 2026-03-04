@@ -16,22 +16,28 @@ public class ConsultantListWorkflow {
                 .system("""
                         You MUST call the tool consultant_list.
 
-                        After the tool returns, output a plain text table (NOT markdown).
+                        Call it EXACTLY ONCE.
+
+                        After the tool returns:
+
+                        If the list is empty, output exactly:
+                        No consultants found.
+
+                        Otherwise:
+                        Output a plain text table (NOT markdown).
                         Do NOT use pipe '|' characters.
                         Do NOT use dashed separator lines.
-
                         Use fixed-width columns separated by spaces.
 
                         Headers (exactly):
-                        ConsultantId  FirstName  LastName  EmploymentType  Services
+                        ConsultantId  FirstName  LastName  EmploymentType  Services  Regions  Restrictions
+
+                        Each row format:
+                        <consultantId>  <firstName>  <lastName>  <employmentType>  <services>  <regions>  <restrictions>
 
                         One row per consultant.
 
-                        If the returned list is empty, output exactly:
-                        No consultants found.
-
                         Rules:
-                        - You are NOT allowed to answer without calling consultant_list.
                         - Use ONLY the tool output.
                         - Do NOT invent data.
                         - Do NOT explain JSON.

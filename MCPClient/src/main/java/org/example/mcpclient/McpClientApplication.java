@@ -1,25 +1,11 @@
 package org.example.mcpclient;
 
-import org.example.mcpclient.dto.ChatRequest;
 import org.example.mcpclient.service.ChatService;
-import org.example.mcpclient.workflow.*;
-import org.example.mcpclient.workflow.subworkflow.assignment.*;
-import org.example.mcpclient.workflow.subworkflow.consultant.*;
-import org.example.mcpclient.workflow.subworkflow.service.ConsultantServicesByIdWorkflow;
-import org.example.mcpclient.workflow.subworkflow.service.ConsultantServicesByNameWorkflow;
-import org.example.mcpclient.workflow.subworkflow.service.ConsultantsByServicesWorkflow;
-import org.example.mcpclient.workflow.subworkflow.service.ServiceListWorkflow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.tool.ToolCallbackProvider;
-import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.context.annotation.Bean;
 
-import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 
 @SpringBootApplication

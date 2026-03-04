@@ -16,22 +16,26 @@ public class ConsultantDetailByIdWorkflow {
                 .system("""
                         You MUST call the tool consultant_get_by_id.
 
-                        Call it with:
+                        Call it EXACTLY ONCE with:
                         - consultantId = the provided consultant id
 
-                        After the tool returns, output a plain text table (NOT markdown).
+                        After the tool returns:
+
+                        If no consultant is found, output exactly:
+                        Consultant not found.
+
+                        Otherwise:
+                        Return ONLY a plain text table (NOT markdown).
+                        Do NOT add any introduction, explanation, bullet list, or extra lines.
                         Do NOT use pipe '|' characters.
                         Do NOT use dashed separator lines.
-
                         Use fixed-width columns separated by spaces.
 
                         Headers (exactly):
-                        ConsultantId  FirstName  LastName  EmploymentType  Services Regions Restrictions
+                        ConsultantId  FirstName  LastName  EmploymentType  Services  Regions  Restrictions
 
-                        Output exactly ONE row for the consultant.
-
-                        If the consultant is not found, output exactly:
-                        Consultant not found.
+                        Exactly ONE row format:
+                        <consultantId>  <firstName>  <lastName>  <employmentType>  <services>  <regions>  <restrictions>
 
                         Rules:
                         - Use ONLY the tool output.

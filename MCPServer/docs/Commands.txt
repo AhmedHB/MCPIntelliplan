@@ -3,7 +3,7 @@
 docker compose up -d
 
 docker compose up --build
-
+organization_count_consultants_by_region
 docker compose up -d   # starta postgres
 
 //-----------------------------------------------------

@@ -175,7 +175,7 @@
 
 .assignments-controls {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   padding: 8px;
   border: 1px solid #d7deeb;
@@ -345,6 +345,40 @@
 
 .assignment-cell-time {
   font-weight: 700;
+  color: #1f365f;
+}
+
+.staff-cell-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.staff-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  padding: 2px 4px;
+  border-radius: 6px;
+  background: #f3f5fb;
+  border: 1px solid #d9e0ee;
+  color: #1f365f;
+  font-weight: 600;
+  font-size: 0.68rem;
+}
+
+.staff-cell.available {
+  background: #e8f7e8;
+  border-color: #cce9cf;
+}
+
+.staff-cell.booked {
+  background: #ffe3e3;
+  border-color: #efc2c2;
+}
+
+.staff-cell-time {
   color: #1f365f;
 }
 

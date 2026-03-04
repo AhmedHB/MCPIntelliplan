@@ -1,3 +1,12 @@
 spring:
   config:
     import: optional:file:./env/local.env.properties
+  ai:
+    ollama:
+      embedding:
+        options:
+          model: nomic-embed-text
+    vectorstore:
+      milvus:
+        embedding-dimension: 768
+        collection-name: chat_memory_store_local_nomic_768_v2

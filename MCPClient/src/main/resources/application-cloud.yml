@@ -1,3 +1,12 @@
 spring:
   config:
     import: optional:file:./env/cloud.env.properties
+  ai:
+    openai:
+      embedding:
+        options:
+          model: text-embedding-3-small
+    vectorstore:
+      milvus:
+        embedding-dimension: 1536
+        collection-name: chat_memory_store_cloud_1536

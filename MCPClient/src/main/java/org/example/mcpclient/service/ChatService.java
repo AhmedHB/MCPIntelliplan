@@ -22,6 +22,8 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
+import java.util.Locale;
+import java.util.Set;
 
 @Service
 public class ChatService {
@@ -29,24 +31,28 @@ public class ChatService {
             LoggerFactory.getLogger(ChatService.class);
 
     // Build once, reuse
-    private final ChatClient routingClient; // NO TOOLS
-    private final ChatClient toolClient;    // WITH TOOLS
+    private final ChatClient routingClient;      // NO TOOLS, WITH MEMORY
+    private final ChatClient toolClient;         // WITH TOOLS, WITH MEMORY (för fria svar om du vill)
+    private final ChatClient strictToolClient;   // WITH TOOLS, NO MEMORY, NO global system
 
     public ChatService(ChatClient.Builder chatClientBuilder,
-                       ToolCallbackProvider tools,
                        VectorStore vectorStore) {
 
         var memoryAdvisor = VectorStoreChatMemoryAdvisor.builder(vectorStore).build();
 
-        // Routing client (NO TOOLS) – used for routing + intent classifiers
+        // Routing client (NO TOOLS explicitly) – buildern kan redan ha tools,
+        // men routingpromptar bör ändå inte kräva tool-anrop.
         this.routingClient = chatClientBuilder
                 .defaultAdvisors(memoryAdvisor)
                 .build();
 
-        // Tool client (WITH TOOLS) – build ONCE so tools don't accumulate
+        // Tool client (WITH MEMORY) – BYGGER PÅ builderns redan-registrerade tools
         this.toolClient = chatClientBuilder
-                .defaultToolCallbacks(tools)
                 .defaultAdvisors(memoryAdvisor)
+                .build();
+
+        // STRICT tool client (NO MEMORY) – BYGGER PÅ builderns redan-registrerade tools
+        this.strictToolClient = chatClientBuilder
                 .build();
     }
 
@@ -97,19 +103,29 @@ public class ChatService {
                 ? ChatMemory.DEFAULT_CONVERSATION_ID
                 : request.conversationId();
 
+        String languageSystemInstruction =
+                "Respond in English. Keep identifiers, codes, and dates unchanged.";
+
         try {
             LOG.info("User Input: {}", input);
             LOG.info("ConversationId: {}", conversationId);
 
             ChatClient requestRoutingClient = routingClient
                     .mutate()
+                    .defaultSystem(languageSystemInstruction)
                     .defaultAdvisors(spec -> spec
                             .param(ChatMemory.CONVERSATION_ID, conversationId)
                             .param(VectorStoreChatMemoryAdvisor.TOP_K, 10))
                     .build();
 
+            // STRICT: no memory advisor + no global language instruction
+            ChatClient requestStrictToolClient = strictToolClient
+                    .mutate()
+                    .build();
+
             ChatClient requestToolClient = toolClient
                     .mutate()
+                    .defaultSystem(languageSystemInstruction)
                     .defaultAdvisors(spec -> spec
                             .param(ChatMemory.CONVERSATION_ID, conversationId)
                             .param(VectorStoreChatMemoryAdvisor.TOP_K, 10))
@@ -132,26 +148,26 @@ public class ChatService {
                             new AssignmentCountByStatusWorkflow(requestToolClient).run(cmd.status());
 
                     case "FIND_BY_STATUS" ->
-                            new AssignmentFindByStatusWorkflow(requestToolClient).run(cmd.status());
+                            new AssignmentFindByStatusWorkflow(requestStrictToolClient).run(cmd.status());
 
                     case "COUNT_BY_DATE" ->
-                            new AssignmentCountByDateWorkflow(requestToolClient)
+                            new AssignmentCountByDateWorkflow(requestStrictToolClient)
                                     .run(cmd.date().format(DateTimeFormatter.ISO_LOCAL_DATE));
 
                     case "FIND_BY_DATE" ->
-                            new AssignmentFindByDateWorkflow(requestToolClient)
+                            new AssignmentFindByDateWorkflow(requestStrictToolClient)
                                     .run(cmd.date().format(DateTimeFormatter.ISO_LOCAL_DATE));
 
                     case "CONSULTANTS_ON_DATE" ->
-                            new AssignmentFindConsultantsByDateWorkflow(requestToolClient)
+                            new AssignmentFindConsultantsByDateWorkflow(requestStrictToolClient)
                                     .run(cmd.date().format(DateTimeFormatter.ISO_LOCAL_DATE));
 
                     case "WORKING_ON_DATE" ->
-                            new ConsultantWorkingOnDateWorkflow(requestToolClient)
+                            new ConsultantWorkingOnDateWorkflow(requestStrictToolClient)
                                     .run(cmd.name(), cmd.date().format(DateTimeFormatter.ISO_LOCAL_DATE));
 
                     case "SUGGEST_CONSULTANTS" ->
-                            new AssignmentSuggestConsultantsbyCodeWorkflow(requestToolClient)
+                            new AssignmentSuggestConsultantsbyCodeWorkflow(requestStrictToolClient)
                                     .run(cmd.assignmentId(), 5);
 
                     default -> {
@@ -159,7 +175,7 @@ public class ChatService {
                                 routeKey,
                                 RoutingWorkflow.ROUTES.get("other")
                         );
-                        yield new DomainWorkflow(requestToolClient).run(domainPrompt, input);
+                        yield new DomainWorkflow(requestStrictToolClient).run(domainPrompt, input);
                     }
                 };
 
@@ -175,20 +191,20 @@ public class ChatService {
 
                 String answer = switch (cmd.action()) {
                     case "LIST_ALL" ->
-                            new ConsultantListWorkflow(requestToolClient).run();
+                            new ConsultantListWorkflow(requestStrictToolClient).run();
 
                     case "GET_BY_ID" ->
-                            new ConsultantDetailByIdWorkflow(requestToolClient).run(cmd.consultantId());
+                            new ConsultantDetailByIdWorkflow(requestStrictToolClient).run(cmd.consultantId());
 
                     case "GET_BY_NAME" ->
-                            new ConsultantDetailByNameWorkflow(requestToolClient).run(cmd.firstName(), cmd.lastName());
+                            new ConsultantDetailByNameWorkflow(requestStrictToolClient).run(cmd.firstName(), cmd.lastName());
 
                     case "FIND_AVAILABLE_BY_DATE" ->
-                            new ConsultantAvailableByDateWorkflow(requestToolClient)
+                            new ConsultantAvailableByDateWorkflow(requestStrictToolClient)
                                     .run(cmd.date().format(DateTimeFormatter.ISO_LOCAL_DATE));
 
                     case "LIST_SICK_BY_DATE" ->
-                            new ConsultantSickByDateWorkflow(requestToolClient)
+                            new ConsultantSickByDateWorkflow(requestStrictToolClient)
                                     .run(cmd.date().format(DateTimeFormatter.ISO_LOCAL_DATE));
 
                     default -> {
@@ -196,7 +212,7 @@ public class ChatService {
                                 routeKey,
                                 RoutingWorkflow.ROUTES.get("other")
                         );
-                        yield new DomainWorkflow(requestToolClient).run(domainPrompt, input);
+                        yield new DomainWorkflow(requestStrictToolClient).run(domainPrompt, input);
                     }
                 };
 
@@ -212,23 +228,23 @@ public class ChatService {
 
                 String answer = switch (cmd.action()) {
                     case "GET_SERVICES_BY_ID" ->
-                            new ConsultantServicesByIdWorkflow(requestToolClient).run(cmd.consultantId());
+                            new ConsultantServicesByIdWorkflow(requestStrictToolClient).run(cmd.consultantId());
 
                     case "GET_SERVICES_BY_NAME" ->
-                            new ConsultantServicesByNameWorkflow(requestToolClient).run(cmd.firstName(), cmd.lastName());
+                            new ConsultantServicesByNameWorkflow(requestStrictToolClient).run(cmd.firstName(), cmd.lastName());
 
                     case "FIND_CONSULTANTS_BY_SERVICES" ->
-                            new ConsultantsByServicesWorkflow(requestToolClient).run(cmd.services(), cmd.matchMode());
+                            new ConsultantsByServicesWorkflow(requestStrictToolClient).run(cmd.services(), cmd.matchMode());
 
                     case "LIST_ALL_SERVICES" ->
-                            new ServiceListWorkflow(requestToolClient).run();
+                            new ServiceListWorkflow(requestStrictToolClient).run();
 
                     default -> {
                         String domainPrompt = RoutingWorkflow.ROUTES.getOrDefault(
                                 routeKey,
                                 RoutingWorkflow.ROUTES.get("other")
                         );
-                        yield new DomainWorkflow(requestToolClient).run(domainPrompt, input);
+                        yield new DomainWorkflow(requestStrictToolClient).run(domainPrompt, input);
                     }
                 };
 
@@ -244,20 +260,20 @@ public class ChatService {
 
                 String answer = switch (cmd.action()) {
                     case "GET_BY_ID" ->
-                            new CustomerGetByIdWorkflow(requestToolClient).run(cmd.customerId());
+                            new CustomerGetByIdWorkflow(requestStrictToolClient).run(cmd.customerId());
 
                     case "SEARCH" ->
-                            new CustomerSearchWorkflow(requestToolClient).run(cmd.customerName(), cmd.region(), cmd.riskProfile());
+                            new CustomerSearchWorkflow(requestStrictToolClient).run(cmd.customerName(), cmd.region(), cmd.riskProfile());
 
                     case "LIST_ALL" ->
-                            new CustomerListWorkflow(requestToolClient).run();
+                            new CustomerListWorkflow(requestStrictToolClient).run();
 
                     default -> {
                         String domainPrompt = RoutingWorkflow.ROUTES.getOrDefault(
                                 routeKey,
                                 RoutingWorkflow.ROUTES.get("other")
                         );
-                        yield new DomainWorkflow(requestToolClient).run(domainPrompt, input);
+                        yield new DomainWorkflow(requestStrictToolClient).run(domainPrompt, input);
                     }
                 };
 
@@ -273,36 +289,36 @@ public class ChatService {
 
                 String answer = switch (cmd.action()) {
                     case "GET_REGION_BY_CONSULTANT_ID" ->
-                            new OrganizationGetRegionByConsultantIdWorkflow(requestToolClient)
+                            new OrganizationGetRegionByConsultantIdWorkflow(requestStrictToolClient)
                                     .run(cmd.consultantId());
 
                     case "GET_REGION_BY_CONSULTANT_NAME" ->
-                            new OrganizationGetRegionByConsultantNameWorkflow(requestToolClient)
+                            new OrganizationGetRegionByConsultantNameWorkflow(requestStrictToolClient)
                                     .run(cmd.firstName(), cmd.lastName());
 
                     case "LIST_CONSULTANTS_BY_REGION" ->
-                            new OrganizationListConsultantsByRegionWorkflow(requestToolClient)
+                            new OrganizationListConsultantsByRegionWorkflow(requestStrictToolClient)
                                     .run(cmd.region());
 
                     case "COUNT_CONSULTANTS_BY_REGION" ->
-                            new OrganizationCountConsultantsByRegionWorkflow(requestToolClient)
+                            new OrganizationCountConsultantsByRegionWorkflow(requestStrictToolClient)
                                     .run(cmd.region());
 
                     case "organization_count_consultants_by_region" ->
-                            new OrganizationListRegionsWithCountsWorkflow(requestToolClient).run();
+                            new OrganizationListRegionsWithCountsWorkflow(requestStrictToolClient).run();
 
                     case "GET_REGION_WITH_MOST_CONSULTANTS" ->
-                            new OrganizationGetRegionWithMostConsultantsWorkflow(requestToolClient).run();
+                            new OrganizationGetRegionWithMostConsultantsWorkflow(requestStrictToolClient).run();
 
                     case "LIST_REGIONS" ->
-                            new OrganizationListRegionsWorkflow(requestToolClient).run();
+                            new OrganizationListRegionsWorkflow(requestStrictToolClient).run();
 
                     default -> {
                         String domainPrompt = RoutingWorkflow.ROUTES.getOrDefault(
                                 routeKey,
                                 RoutingWorkflow.ROUTES.get("other")
                         );
-                        yield new DomainWorkflow(requestToolClient).run(domainPrompt, input);
+                        yield new DomainWorkflow(requestStrictToolClient).run(domainPrompt, input);
                     }
                 };
 
