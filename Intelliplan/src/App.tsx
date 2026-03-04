@@ -146,6 +146,9 @@ function App() {
   );
   const [isAssignmentsLoading, setIsAssignmentsLoading] = useState(false);
   const [assignmentsError, setAssignmentsError] = useState<string | null>(null);
+  const [serviceFilter, setServiceFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [regionFilter, setRegionFilter] = useState('');
 
   const assignmentDates = useMemo(
     () =>
@@ -183,49 +186,65 @@ function App() {
     [calendarAssignments]
   );
 
-  useEffect(() => {
-    let isMounted = true;
+  const loadAssignments = async (url: string): Promise<void> => {
+    setIsAssignmentsLoading(true);
+    setAssignmentsError(null);
 
-    const loadAssignments = async () => {
-      setIsAssignmentsLoading(true);
-      setAssignmentsError(null);
+    try {
+      const response = await fetch(url);
+      const payload = (await response.json()) as CalendarAssignmentsResponse;
 
-      try {
-        const response = await fetch(ASSIGNMENTS_API_URL);
-        const payload = (await response.json()) as CalendarAssignmentsResponse;
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        if (!isMounted) {
-          return;
-        }
-
-        setCalendarAssignments(payload.calendarAssignments ?? []);
-      } catch (caughtError) {
-        console.error(caughtError);
-
-        if (!isMounted) {
-          return;
-        }
-
-        setAssignmentsError(
-          `Kunde inte hamta assignments fran ${ASSIGNMENTS_API_URL}. Kontrollera att API:t ar igang.`
-        );
-      } finally {
-        if (isMounted) {
-          setIsAssignmentsLoading(false);
-        }
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
       }
-    };
 
-    loadAssignments();
+      setCalendarAssignments(payload.calendarAssignments ?? []);
+    } catch (caughtError) {
+      console.error(caughtError);
+      setAssignmentsError(
+        `Kunde inte hamta assignments fran ${url}. Kontrollera att API:t ar igang.`
+      );
+      setCalendarAssignments([]);
+    } finally {
+      setIsAssignmentsLoading(false);
+    }
+  };
 
-    return () => {
-      isMounted = false;
-    };
+  useEffect(() => {
+    loadAssignments(ASSIGNMENTS_API_URL);
   }, []);
+
+  const handleAssignmentsFilter = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const query = new URLSearchParams();
+    if (serviceFilter.trim()) {
+      query.append('service', serviceFilter.trim());
+    }
+    if (statusFilter.trim()) {
+      query.append('status', statusFilter.trim());
+    }
+
+    const regions = regionFilter
+      .split(',')
+      .map((region) => region.trim())
+      .filter(Boolean);
+    for (const region of regions) {
+      query.append('region', region);
+    }
+
+    const url = query.toString()
+      ? `${ASSIGNMENTS_API_URL}?${query.toString()}`
+      : ASSIGNMENTS_API_URL;
+    await loadAssignments(url);
+  };
+
+  const handleAssignmentsReset = async (): Promise<void> => {
+    setServiceFilter('');
+    setStatusFilter('');
+    setRegionFilter('');
+    await loadAssignments(ASSIGNMENTS_API_URL);
+  };
 
   const handleSend = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -359,6 +378,44 @@ function App() {
             <div className="tab-content" role="tabpanel">
               {activeTab === 'tab-1' ? (
                 <div className="assignments-panel">
+                  <form className="assignments-controls" onSubmit={handleAssignmentsFilter}>
+                    <input
+                      className="assignments-control-input"
+                      type="text"
+                      value={serviceFilter}
+                      onChange={(event) => setServiceFilter(event.target.value)}
+                      placeholder="Service (ex: ForkliftOperator)"
+                    />
+                    <select
+                      className="assignments-control-select"
+                      value={statusFilter}
+                      onChange={(event) => setStatusFilter(event.target.value)}
+                    >
+                      <option value="">Alla statusar</option>
+                      <option value="CONFIRMED">CONFIRMED</option>
+                      <option value="LATE_REPORTED">LATE_REPORTED</option>
+                      <option value="SICK_REPORTED">SICK_REPORTED</option>
+                      <option value="NO_SHOW">NO_SHOW</option>
+                    </select>
+                    <input
+                      className="assignments-control-input"
+                      type="text"
+                      value={regionFilter}
+                      onChange={(event) => setRegionFilter(event.target.value)}
+                      placeholder="Region(er), kommaseparerat (SE-STH,SE-MAL)"
+                    />
+                    <button className="assignments-btn assignments-btn-primary" type="submit">
+                      Filter
+                    </button>
+                    <button
+                      className="assignments-btn assignments-btn-secondary"
+                      type="button"
+                      onClick={handleAssignmentsReset}
+                    >
+                      Reset
+                    </button>
+                  </form>
+
                   {isAssignmentsLoading ? <p>Laddar assignments...</p> : null}
 
                   {assignmentsError ? (

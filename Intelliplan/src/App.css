@@ -173,6 +173,51 @@
   gap: 10px;
 }
 
+.assignments-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid #d7deeb;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.assignments-control-input,
+.assignments-control-select {
+  border: 1px solid #c6d0e3;
+  border-radius: 8px;
+  padding: 7px 9px;
+  font: inherit;
+  font-size: 0.8rem;
+  color: #24375d;
+  background: #fbfdff;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.assignments-btn {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.assignments-btn-primary {
+  background: #1e4fd8;
+  border-color: #1e4fd8;
+  color: #ffffff;
+}
+
+.assignments-btn-secondary {
+  background: #ffffff;
+  border-color: #c6d0e3;
+  color: #2a3e64;
+}
+
 .assignments-error {
   margin: 0;
   color: #9f1d2d;
@@ -363,5 +408,9 @@
 
   .chat-message {
     max-width: 94%;
+  }
+
+  .assignments-controls {
+    grid-template-columns: 1fr;
   }
 }
