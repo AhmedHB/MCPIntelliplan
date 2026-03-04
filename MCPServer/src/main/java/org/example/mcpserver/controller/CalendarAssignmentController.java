@@ -2,6 +2,7 @@ package org.example.mcpserver.controller;
 
 import org.example.mcpserver.dto.CalendarAssignmentDTO;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -19,7 +20,7 @@ public interface CalendarAssignmentController {
      *  GET /api/calendar/assignments?fromDate=2026-02-20&toDate=2026-02-28
      */
     @GetMapping("/assignments")
-    CalendarAssignmentDTO calendarForAllAssignments(
+    ResponseEntity<CalendarAssignmentDTO> calendarForAllAssignments(
             @RequestParam(required = false) Set<String> service,
             @RequestParam(required = false) Set<String> region,
             @RequestParam(required = false) Set<String> status,

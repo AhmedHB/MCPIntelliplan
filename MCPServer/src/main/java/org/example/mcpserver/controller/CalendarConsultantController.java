@@ -2,6 +2,7 @@ package org.example.mcpserver.controller;
 
 import org.example.mcpserver.dto.CalendarConsultantDTO;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -13,7 +14,7 @@ import java.util.Set;
 public interface CalendarConsultantController {
 
     @GetMapping("/consultants")
-    public CalendarConsultantDTO calendarForAllConsultants(
+    public ResponseEntity<CalendarConsultantDTO> calendarForAllConsultants(
             @RequestParam(required = false) Set<String> service,
             @RequestParam(required = false) Set<String> region,
             @RequestParam(required = false) Set<String> status,
@@ -29,7 +30,7 @@ public interface CalendarConsultantController {
      *  GET /api/calendar/consultants/CONS_100071?fromDate=2026-02-20&toDate=2026-02-28
      */
     @GetMapping("/consultants/{consultantId}")
-    public CalendarConsultantDTO calendarForConsultant(
+    public ResponseEntity<CalendarConsultantDTO> calendarForConsultant(
             @PathVariable String consultantId,
             @RequestParam(required = false) Set<String> service,
             @RequestParam(required = false) Set<String> region,

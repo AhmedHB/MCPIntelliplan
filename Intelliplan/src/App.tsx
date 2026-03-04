@@ -1,4 +1,4 @@
-import React, { FormEvent, ReactNode, useState } from 'react';
+import React, { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
 import './App.css';
 
 type ChatMessage = {
@@ -8,8 +8,40 @@ type ChatMessage = {
 };
 
 const CHAT_API_URL = 'http://localhost:8080/api/chat';
+const ASSIGNMENTS_API_URL = 'http://localhost:9090/api/calendar/assignments';
 const createMessageId = (): string =>
   `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+type CalendarAssignmentItem = {
+  assignment: {
+    assignmentId: string;
+    customerId: string;
+    consultantId: string;
+    service: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    status: string;
+  };
+};
+
+type CalendarAssignmentsResponse = {
+  calendarAssignments?: CalendarAssignmentItem[];
+};
+
+type AssignmentCalendarRow = {
+  assignmentId: string;
+  byDate: Record<
+    string,
+    {
+      time: string;
+      customerId: string;
+      consultantId: string;
+      service: string;
+      status: string;
+    }
+  >;
+};
 
 function readAssistantText(payload: unknown): string {
   if (typeof payload === 'string') {
@@ -74,11 +106,126 @@ function renderMarkdownLite(text: string): ReactNode {
   });
 }
 
+function formatDateLabel(isoDate: string): string {
+  const date = new Date(`${isoDate}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return isoDate;
+  }
+
+  return new Intl.DateTimeFormat('sv-SE', {
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit'
+  }).format(date);
+}
+
+function getStatusClassName(status: string): string {
+  switch (status) {
+    case 'CONFIRMED':
+      return 'status-confirmed';
+    case 'LATE_REPORTED':
+      return 'status-late-reported';
+    case 'SICK_REPORTED':
+      return 'status-sick-reported';
+    case 'NO_SHOW':
+      return 'status-no-show';
+    default:
+      return 'status-default';
+  }
+}
+
 function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'tab-1' | 'tab-2'>('tab-1');
+  const [calendarAssignments, setCalendarAssignments] = useState<CalendarAssignmentItem[]>(
+    []
+  );
+  const [isAssignmentsLoading, setIsAssignmentsLoading] = useState(false);
+  const [assignmentsError, setAssignmentsError] = useState<string | null>(null);
+
+  const assignmentDates = useMemo(
+    () =>
+      Array.from(
+        new Set(calendarAssignments.map((item) => item.assignment.date).filter(Boolean))
+      ).sort((a, b) => a.localeCompare(b)),
+    [calendarAssignments]
+  );
+
+  const assignmentRows = useMemo(
+    () => {
+      const grouped = new Map<string, AssignmentCalendarRow>();
+
+      for (const item of calendarAssignments) {
+        const assignment = item.assignment;
+        const existing = grouped.get(assignment.assignmentId) ?? {
+          assignmentId: assignment.assignmentId,
+          byDate: {}
+        };
+
+        existing.byDate[assignment.date] = {
+          time: `${assignment.startTime}-${assignment.endTime}`,
+          customerId: assignment.customerId,
+          consultantId: assignment.consultantId,
+          service: assignment.service,
+          status: assignment.status
+        };
+        grouped.set(assignment.assignmentId, existing);
+      }
+
+      return Array.from(grouped.values()).sort((a, b) =>
+        a.assignmentId.localeCompare(b.assignmentId)
+      );
+    },
+    [calendarAssignments]
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadAssignments = async () => {
+      setIsAssignmentsLoading(true);
+      setAssignmentsError(null);
+
+      try {
+        const response = await fetch(ASSIGNMENTS_API_URL);
+        const payload = (await response.json()) as CalendarAssignmentsResponse;
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        if (!isMounted) {
+          return;
+        }
+
+        setCalendarAssignments(payload.calendarAssignments ?? []);
+      } catch (caughtError) {
+        console.error(caughtError);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setAssignmentsError(
+          `Kunde inte hamta assignments fran ${ASSIGNMENTS_API_URL}. Kontrollera att API:t ar igang.`
+        );
+      } finally {
+        if (isMounted) {
+          setIsAssignmentsLoading(false);
+        }
+      }
+    };
+
+    loadAssignments();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleSend = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -144,46 +291,147 @@ function App() {
       <main className="chat-shell">
         <h1 className="chat-title">IntelliPlan Chat</h1>
         <p className="chat-subtitle">Pratar med: {CHAT_API_URL}</p>
+        <div className="chat-layout">
+          <section className="chat-main">
+            <section className="chat-window" aria-label="Chat-konversation">
+              {messages.length === 0 ? (
+                <p className="chat-empty">Skriv ett meddelande för att starta chatten.</p>
+              ) : (
+                messages.map((message) => (
+                  <article
+                    key={message.id}
+                    className={`chat-message chat-message-${message.role}`}
+                  >
+                    <strong>{message.role === 'user' ? 'Du' : 'Assistent'}</strong>
+                    <div className="chat-message-body">
+                      {message.role === 'assistant'
+                        ? renderMarkdownLite(message.text)
+                        : message.text}
+                    </div>
+                  </article>
+                ))
+              )}
+            </section>
 
-        <section className="chat-window" aria-label="Chat-konversation">
-          {messages.length === 0 ? (
-            <p className="chat-empty">Skriv ett meddelande för att starta chatten.</p>
-          ) : (
-            messages.map((message) => (
-              <article
-                key={message.id}
-                className={`chat-message chat-message-${message.role}`}
+            {error ? <p className="chat-error">{error}</p> : null}
+
+            <form className="chat-form" onSubmit={handleSend}>
+              <label htmlFor="chat-input" className="sr-only">
+                Ditt meddelande
+              </label>
+              <input
+                id="chat-input"
+                className="chat-input"
+                type="text"
+                placeholder="Skriv ditt meddelande..."
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                disabled={isSending}
+              />
+              <button className="chat-send" type="submit" disabled={isSending}>
+                {isSending ? 'Skickar...' : 'Skicka'}
+              </button>
+            </form>
+          </section>
+
+          <aside className="tab-panel" aria-label="Sidopanel med flikar">
+            <div className="tab-header" role="tablist" aria-label="Flikar">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === 'tab-1'}
+                className={`tab-button ${activeTab === 'tab-1' ? 'is-active' : ''}`}
+                onClick={() => setActiveTab('tab-1')}
               >
-                <strong>{message.role === 'user' ? 'Du' : 'Assistent'}</strong>
-                <div className="chat-message-body">
-                  {message.role === 'assistant'
-                    ? renderMarkdownLite(message.text)
-                    : message.text}
+                Assignments
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === 'tab-2'}
+                className={`tab-button ${activeTab === 'tab-2' ? 'is-active' : ''}`}
+                onClick={() => setActiveTab('tab-2')}
+              >
+                Staff
+              </button>
+            </div>
+
+            <div className="tab-content" role="tabpanel">
+              {activeTab === 'tab-1' ? (
+                <div className="assignments-panel">
+                  {isAssignmentsLoading ? <p>Laddar assignments...</p> : null}
+
+                  {assignmentsError ? (
+                    <p className="assignments-error">{assignmentsError}</p>
+                  ) : null}
+
+                  {!isAssignmentsLoading && !assignmentsError ? (
+                    assignmentRows.length > 0 && assignmentDates.length > 0 ? (
+                      <>
+                        <div className="assignment-legend">
+                          <span className="legend-item legend-confirmed">Confirmed</span>
+                          <span className="legend-item legend-late">Late reported</span>
+                          <span className="legend-item legend-sick">Sick reported</span>
+                          <span className="legend-item legend-no-show">No show</span>
+                        </div>
+                        <div className="assignments-table-wrap">
+                          <table className="assignments-table">
+                            <thead>
+                              <tr>
+                                <th scope="col">assignmentId</th>
+                                {assignmentDates.map((date) => (
+                                  <th scope="col" key={date}>
+                                    {formatDateLabel(date)}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {assignmentRows.map((row) => (
+                                <tr key={row.assignmentId}>
+                                  <th scope="row">{row.assignmentId}</th>
+                                  {assignmentDates.map((date) => {
+                                    const cell = row.byDate[date];
+                                    return (
+                                      <td key={`${row.assignmentId}-${date}`}>
+                                        {cell ? (
+                                          <div
+                                            className={`assignment-cell ${getStatusClassName(
+                                              cell.status
+                                            )}`}
+                                            title={
+                                              `customerId: ${cell.customerId}\n` +
+                                              `consultantId: ${cell.consultantId}\n` +
+                                              `time: ${cell.time}\n` +
+                                              `service: ${cell.service}\n` +
+                                              `status: ${cell.status}`
+                                            }
+                                          >
+                                            <div className="assignment-cell-time">{cell.time}</div>
+                                          </div>
+                                        ) : (
+                                          ''
+                                        )}
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    ) : (
+                      <p>Inga assignments att visa.</p>
+                    )
+                  ) : null}
                 </div>
-              </article>
-            ))
-          )}
-        </section>
-
-        {error ? <p className="chat-error">{error}</p> : null}
-
-        <form className="chat-form" onSubmit={handleSend}>
-          <label htmlFor="chat-input" className="sr-only">
-            Ditt meddelande
-          </label>
-          <input
-            id="chat-input"
-            className="chat-input"
-            type="text"
-            placeholder="Skriv ditt meddelande..."
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            disabled={isSending}
-          />
-          <button className="chat-send" type="submit" disabled={isSending}>
-            {isSending ? 'Skickar...' : 'Skicka'}
-          </button>
-        </form>
+              ) : (
+                <p>Staff visas har.</p>
+              )}
+            </div>
+          </aside>
+        </div>
       </main>
     </div>
   );

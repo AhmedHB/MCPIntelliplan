@@ -1,6 +1,10 @@
 package org.example.mcpserver.service;
 
 import org.example.mcpserver.dto.AssignmentDTO;
+import org.example.mcpserver.dto.CalendarAssignmentDTO;
+import org.example.mcpserver.dto.CalendarAssignmentRowDTO;
+import org.example.mcpserver.dto.CalendarConsultantDTO;
+import org.example.mcpserver.dto.CalendarConsultantRowDTO;
 import org.example.mcpserver.dto.ConsultantDTO;
 import org.example.mcpserver.dto.ConsultantSuggestionDTO;
 import org.example.mcpserver.repository.*;
@@ -12,6 +16,10 @@ import org.example.mcpserver.service.exception.BadRequestException;
 import org.example.mcpserver.service.exception.NotFoundException;
 import org.example.mcpserver.service.mapping.AssignmentMapper;
 import org.example.mcpserver.service.mapping.ConsultantMapper;
+import org.example.mcpserver.service.mapping.CustomerMapper;
+import org.example.mcpserver.service.util.CalendarFilterUtils;
+import org.example.mcpserver.service.util.CsvTokenUtils;
+import org.example.mcpserver.service.util.TimeRangeUtils;
 import org.example.mcpserver.service.validation.ValidationUtils;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.stereotype.Service;
@@ -35,6 +43,7 @@ public class AssignmentService {
     private final ServiceRepository serviceRepository;
     private final AssignmentMapper assignmentMapper;
     private final ConsultantMapper consultantMapper;
+    private final CustomerMapper customerMapper;
     private final AvailabilityRepository availabilityRepository;
 
     public AssignmentService(AssignmentRepository assignmentRepository,
@@ -43,7 +52,8 @@ public class AssignmentService {
                              ServiceRepository serviceRepository,
                              AvailabilityRepository availabilityRepository,
                              AssignmentMapper assignmentMapper,
-                             ConsultantMapper consultantMapper) {
+                             ConsultantMapper consultantMapper,
+                             CustomerMapper customerMapper) {
         this.assignmentRepository = assignmentRepository;
         this.customerRepository = customerRepository;
         this.consultantRepository = consultantRepository;
@@ -51,6 +61,7 @@ public class AssignmentService {
         this.availabilityRepository = availabilityRepository;
         this.assignmentMapper = assignmentMapper;
         this.consultantMapper = consultantMapper;
+        this.customerMapper = customerMapper;
     }
 
     // ================================
@@ -297,14 +308,14 @@ public class AssignmentService {
                     // Must STILL have at least one covering AVAILABLE slot (defensive)
                     boolean hasCoveringAvailable = slots.stream()
                             .filter(s -> s.getStatus() == AvailabilityStatus.AVAILABLE)
-                            .anyMatch(s -> covers(s.getStartTime(), s.getEndTime(), start, end));
+                            .anyMatch(s -> TimeRangeUtils.covers(s.getStartTime(), s.getEndTime(), start, end));
 
                     if (!hasCoveringAvailable) return false;
 
                     // No overlapping non-AVAILABLE slots
                     boolean hasBlockingOverlap = slots.stream()
                             .filter(s -> s.getStatus() != null && s.getStatus() != AvailabilityStatus.AVAILABLE)
-                            .anyMatch(s -> overlaps(s.getStartTime(), s.getEndTime(), start, end));
+                            .anyMatch(s -> TimeRangeUtils.overlaps(s.getStartTime(), s.getEndTime(), start, end));
 
                     return !hasBlockingOverlap;
                 })
@@ -315,9 +326,9 @@ public class AssignmentService {
         // 5) Load consultants and filter region + restrictions + service
         return consultantRepository.findAllById(conflictFreeCandidateIds).stream()
                 .filter(Objects::nonNull)
-                .filter(c -> consultantRegionsContains(c.getRegions(), customerRegion))
-                .filter(c -> !restrictionsContainsCustomer(c.getRestrictions(), customerId))
-                .filter(c -> consultantServicesContains(c.getServices(), requiredService))
+                .filter(c -> CsvTokenUtils.containsIgnoreCaseToken(c.getRegions(), customerRegion))
+                .filter(c -> !CsvTokenUtils.containsIgnoreCaseToken(c.getRestrictions(), customerId))
+                .filter(c -> CsvTokenUtils.containsIgnoreCaseToken(c.getServices(), requiredService))
                 .limit(lim)
                 .map(c -> new ConsultantSuggestionDTO(
                         c.getConsultantId(),
@@ -330,57 +341,40 @@ public class AssignmentService {
                 .toList();
     }
 
-    // -------------------- helpers --------------------
+    @Tool(
+            name = "assignment_calendar_search",
+            description = "Return assignments for calendar view filtered by optional service, region, status and date range."
+    )
+    @Transactional(readOnly = true)
+    public CalendarAssignmentDTO calendarForAllAssignments(Set<String> services,
+                                                           Set<String> regions,
+                                                           Set<String> statuses,
+                                                           LocalDate fromDate,
+                                                           LocalDate toDate) {
+        CalendarFilterUtils.validateDateRange(fromDate, toDate);
 
-    private static boolean covers(LocalTime slotStart, LocalTime slotEnd, LocalTime aStart, LocalTime aEnd) {
-        if (slotStart == null || slotEnd == null || aStart == null || aEnd == null) return false;
-        return !slotStart.isAfter(aStart) && !slotEnd.isBefore(aEnd);
-    }
+        Set<String> normalizedServices = CalendarFilterUtils.normalizeFilterValues(services);
+        Set<String> normalizedRegions = CalendarFilterUtils.normalizeFilterValues(regions);
+        var normalizedStatuses = CalendarFilterUtils.normalizeStatuses(statuses);
 
-    // overlap if intervals intersect: [slotStart, slotEnd) intersects [aStart, aEnd)
-    private static boolean overlaps(LocalTime slotStart, LocalTime slotEnd, LocalTime aStart, LocalTime aEnd) {
-        if (slotStart == null || slotEnd == null || aStart == null || aEnd == null) return false;
-        return slotStart.isBefore(aEnd) && slotEnd.isAfter(aStart);
-    }
-
-    private static List<String> splitSemicolon(String s) {
-        if (s == null) return List.of();
-        String t = s.trim();
-        if (t.isBlank()) return List.of();
-
-        return Arrays.stream(t.split(";"))
-                .map(String::trim)
-                .filter(x -> !x.isBlank())
+        List<CalendarAssignmentRowDTO> rows = assignmentRepository.findAll().stream()
+                .filter(a -> CalendarFilterUtils.matchesService(a, normalizedServices))
+                .filter(a -> CalendarFilterUtils.matchesRegion(a, normalizedRegions))
+                .filter(a -> CalendarFilterUtils.matchesStatus(a, normalizedStatuses))
+                .filter(a -> CalendarFilterUtils.matchesDateRange(a, fromDate, toDate))
+                .sorted(Comparator
+                        .comparing(AssignmentEntity::getDate)
+                        .thenComparing(AssignmentEntity::getStartTime)
+                        .thenComparing(AssignmentEntity::getAssignmentId))
+                .map(a -> new CalendarAssignmentRowDTO(
+                        assignmentMapper.toDto(a),
+                        consultantMapper.toDto(a.getConsultant()),
+                        customerMapper.toDto(a.getCustomer())
+                ))
                 .toList();
+
+        return new CalendarAssignmentDTO(rows);
     }
-
-    private static boolean consultantRegionsContains(String consultantRegions, String customerRegion) {
-        if (customerRegion == null || customerRegion.isBlank()) return false;
-        String needle = customerRegion.trim().toLowerCase();
-
-        return splitSemicolon(consultantRegions).stream()
-                .map(r -> r.toLowerCase())
-                .anyMatch(r -> r.equals(needle));
-    }
-
-    private static boolean restrictionsContainsCustomer(String restrictions, String customerId) {
-        if (customerId == null || customerId.isBlank()) return false;
-        String needle = customerId.trim().toLowerCase();
-
-        return splitSemicolon(restrictions).stream()
-                .map(x -> x.toLowerCase())
-                .anyMatch(x -> x.equals(needle));
-    }
-
-    private static boolean consultantServicesContains(String consultantServices, String requiredService) {
-        if (requiredService == null || requiredService.isBlank()) return false;
-        String needle = requiredService.trim().toLowerCase();
-
-        return splitSemicolon(consultantServices).stream()
-                .map(s -> s.toLowerCase())
-                .anyMatch(s -> s.equals(needle));
-    }
-
     // ================================
     // LIST ALL
     // ================================

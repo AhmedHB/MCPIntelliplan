@@ -31,3 +31,16 @@ CREATE SCHEMA public;
 
 Run inspector
 npx @modelcontextprotocol/inspector
+
+//-----------------------------------------------------
+
+curl -s -X GET "http://localhost:9090/api/calendar/assignments" | jq .
+curl -s -X GET "http://localhost:9090/api/calendar/assignments?service=ForkliftOperator&status=CONFIRMED" | jq .
+curl -s -X GET "http://localhost:9090/api/calendar/assignments?region=SE-STH&region=SE-MAL" | jq .
+
+
+curl -s -X GET "http://localhost:9090/api/calendar/consultants" | jq .
+curl -s -X GET "http://localhost:9090/api/calendar/consultants/CONS_100071" | jq .
+curl -s -X GET "http://localhost:9090/api/calendar/consultants/CONS_100071?service=ForkliftOperator&status=CONFIRMED" | jq .
+curl -s -X GET "http://localhost:9090/api/calendar/consultants/CONS_100071?region=SE-STH&region=SE-MAL" | jq .
+curl -s -X GET "http://localhost:9090/api/calendar/consultants/CONS_100071?fromDate=2026-02-20&toDate=2026-02-28" | jq .

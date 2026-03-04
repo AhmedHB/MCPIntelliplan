@@ -1,18 +1,20 @@
 package org.example.mcpserver.service;
 
-import org.example.mcpserver.dto.ConsultantCountByRegionDTO;
-import org.example.mcpserver.dto.ConsultantDTO;
-import org.example.mcpserver.dto.RegionByConsultantResponseDTO;
+import org.example.mcpserver.dto.*;
+import org.example.mcpserver.dto.filter.Status;
+import org.example.mcpserver.repository.AssignmentRepository;
 import org.example.mcpserver.repository.AvailabilityRepository;
 import org.example.mcpserver.repository.ConsultantRepository;
 import org.example.mcpserver.repository.RegionRepository;
-import org.example.mcpserver.repository.domain.AvailabilityEntity;
-import org.example.mcpserver.repository.domain.AvailabilityStatus;
-import org.example.mcpserver.repository.domain.ConsultantEntity;
-import org.example.mcpserver.repository.domain.RegionEntity;
+import org.example.mcpserver.repository.domain.*;
 import org.example.mcpserver.service.exception.BadRequestException;
 import org.example.mcpserver.service.exception.NotFoundException;
+import org.example.mcpserver.service.mapping.AssignmentMapper;
+import org.example.mcpserver.service.mapping.AvailabilityMapper;
 import org.example.mcpserver.service.mapping.ConsultantMapper;
+import org.example.mcpserver.service.mapping.CustomerMapper;
+import org.example.mcpserver.service.util.CalendarFilterUtils;
+import org.example.mcpserver.service.util.CsvTokenUtils;
 import org.example.mcpserver.service.validation.ValidationUtils;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.stereotype.Service;
@@ -20,10 +22,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
+import java.util.*;
+
+import static java.util.stream.Collectors.toMap;
 
 @Service
 @Transactional
@@ -32,15 +33,25 @@ public class ConsultantService {
     private final ConsultantRepository consultantRepository;
     private final AvailabilityRepository availabilityRepository;
     private final RegionRepository regionRepository;
+
+    private final AssignmentRepository assignmentRepository;
     private final ConsultantMapper consultantMapper;
+    private final AvailabilityMapper availabilityMapper;
+
+    private final CustomerMapper customerMapper;
+    private final AssignmentMapper assignmentMapper;
 
     public ConsultantService(ConsultantRepository consultantRepository,
-                             AvailabilityRepository availabilityRepository, PoolService poolService, RegionRepository regionRepository,
-                             ConsultantMapper consultantMapper) {
+                             AvailabilityRepository availabilityRepository, PoolService poolService, RegionRepository regionRepository, AssignmentRepository assignmentRepository,
+                             ConsultantMapper consultantMapper, AvailabilityMapper availabilityMapper, CustomerMapper customerMapper, AssignmentMapper assignmentMapper) {
         this.consultantRepository = consultantRepository;
         this.availabilityRepository = availabilityRepository;
         this.regionRepository = regionRepository;
+        this.assignmentRepository = assignmentRepository;
         this.consultantMapper = consultantMapper;
+        this.availabilityMapper = availabilityMapper;
+        this.customerMapper = customerMapper;
+        this.assignmentMapper = assignmentMapper;
     }
 
     @Tool(
@@ -160,32 +171,6 @@ public class ConsultantService {
                 .toList();
     }
 
-    // -------------------- helpers --------------------
-    private static String cleanToken(String s) {
-        if (s == null) return null;
-        String t = s.trim();
-
-        // remove surrounding quotes if present
-        if ((t.startsWith("\"") && t.endsWith("\"")) || (t.startsWith("'") && t.endsWith("'"))) {
-            t = t.substring(1, t.length() - 1).trim();
-        }
-
-        // remove trailing punctuation like ?, . , :
-        t = t.replaceAll("[\\p{Punct}]+$", "");
-
-        return t.trim();
-    }
-
-    private List<String> splitServices(String services) {
-        if (services == null || services.isBlank()) return List.of();
-
-        return java.util.Arrays.stream(services.split(";"))
-                .map(String::trim)
-                .map(ConsultantService::cleanToken)
-                .filter(s -> s != null && !s.isBlank())
-                .toList();
-    }
-
     @Tool(
             name = "consultant_get_services_by_id",
             description = "Returns the services for the specified consultantId as a list of strings."
@@ -198,7 +183,7 @@ public class ConsultantService {
         ConsultantEntity entity = consultantRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Consultant not found: " + id));
 
-        return splitServices(entity.getServices());
+        return CsvTokenUtils.splitSemicolonTokens(entity.getServices());
     }
 
     @Tool(
@@ -221,7 +206,7 @@ public class ConsultantService {
             throw new BadRequestException("Multiple consultants found with name: " + fn + " " + ln);
         }
 
-        return splitServices(matches.get(0).getServices());
+        return CsvTokenUtils.splitSemicolonTokens(matches.get(0).getServices());
     }
 
     @Tool(
@@ -246,7 +231,7 @@ public class ConsultantService {
 
         return consultantRepository.findAll().stream()
                 .filter(c -> {
-                    List<String> hay = splitServices(c.getServices()).stream()
+                    List<String> hay = CsvTokenUtils.splitSemicolonTokens(c.getServices()).stream()
                             .map(String::toLowerCase)
                             .toList();
 
@@ -329,7 +314,7 @@ public class ConsultantService {
         String regionCode = resolveRegionCode(region);
 
         return consultantRepository.findAll().stream()
-                .filter(c -> hasRegionToken(c.getRegions(), regionCode))
+                .filter(c -> CsvTokenUtils.containsIgnoreCaseToken(c.getRegions(), regionCode))
                 .map(consultantMapper::toDto)
                 .toList();
     }
@@ -337,7 +322,7 @@ public class ConsultantService {
     // -------------------- helpers --------------------
 
     private String resolveRegionCode(String input) {
-        String candidate = cleanToken(input);
+        String candidate = CsvTokenUtils.cleanToken(input);
 
         // if user already provides SE-XXX, try PK lookup
         if (candidate != null && candidate.toUpperCase(Locale.ROOT).startsWith("SE-")) {
@@ -353,16 +338,6 @@ public class ConsultantService {
                 .map(r -> r.getRegionCode())
                 .orElseThrow(() -> new NotFoundException("Region not found: " + candidate));
     }
-    private boolean hasRegionToken(String regionsCsv, String regionCode) {
-        String regions = ValidationUtils.trimToNull(regionsCsv);
-        if (regions == null) return false;
-
-        return Arrays.stream(regions.split(";"))
-                .map(String::trim)
-                .map(ConsultantService::cleanToken)
-                .filter(s -> s != null && !s.isBlank())
-                .anyMatch(tok -> tok.equalsIgnoreCase(regionCode));
-    }
 
     @Tool(
             name = "organization_count_consultants_by_region",
@@ -377,7 +352,7 @@ public class ConsultantService {
                 .orElseThrow(() -> new NotFoundException("Region not found: " + regionCode));
 
         long count = consultantRepository.findAll().stream()
-                .filter(c -> hasRegionToken(c.getRegions(), regionCode))
+                .filter(c -> CsvTokenUtils.containsIgnoreCaseToken(c.getRegions(), regionCode))
                 .count();
 
         return new ConsultantCountByRegionDTO(
@@ -408,12 +383,7 @@ public class ConsultantService {
             String csv = ValidationUtils.trimToNull(c.getRegions());
             if (csv == null) continue;
 
-            java.util.Set<String> uniqueTokens = java.util.Arrays.stream(csv.split(";"))
-                    .map(String::trim)
-                    .map(ConsultantService::cleanToken)
-                    .filter(s -> s != null && !s.isBlank())
-                    .map(s -> s.toUpperCase(Locale.ROOT))
-                    .collect(java.util.stream.Collectors.toSet());
+            java.util.Set<String> uniqueTokens = CsvTokenUtils.toUpperTokenSet(csv);
 
             for (String code : uniqueTokens) {
                 if (counts.containsKey(code)) {
@@ -431,6 +401,120 @@ public class ConsultantService {
                 ))
                 .sorted(java.util.Comparator.comparing(ConsultantCountByRegionDTO::regionCode))
                 .toList();
+    }
+
+    @Tool(
+            name = "consultant_calendar_search",
+            description = "Return consultant calendar rows filtered by optional service, region, status and date range."
+    )
+    @Transactional(readOnly = true)
+    public CalendarConsultantDTO calendarForAllConsultants(Set<String> services,
+                                                           Set<String> regions,
+                                                           Set<String> statuses,
+                                                           LocalDate fromDate,
+                                                           LocalDate toDate) {
+        return buildConsultantCalendar(null, services, regions, statuses, fromDate, toDate);
+    }
+
+    @Tool(
+            name = "consultant_calendar_search_by_id",
+            description = "Return consultant calendar rows for a specific consultant filtered by optional service, region, status and date range."
+    )
+    @Transactional(readOnly = true)
+    public CalendarConsultantDTO calendarForConsultant(String consultantId,
+                                                       Set<String> services,
+                                                       Set<String> regions,
+                                                       Set<String> statuses,
+                                                       LocalDate fromDate,
+                                                       LocalDate toDate) {
+        String cid = ValidationUtils.requireNonBlank(consultantId, "consultantId");
+        if (!consultantRepository.existsById(cid)) {
+            throw new NotFoundException("Consultant hittades inte: " + cid);
+        }
+        return buildConsultantCalendar(cid, services, regions, statuses, fromDate, toDate);
+    }
+
+    // -------------------- helpers --------------------
+
+    private CalendarConsultantDTO buildConsultantCalendar(String consultantId,
+                                                          Set<String> services,
+                                                          Set<String> regions,
+                                                          Set<String> statuses,
+                                                          LocalDate fromDate,
+                                                          LocalDate toDate) {
+        CalendarFilterUtils.validateDateRange(fromDate, toDate);
+
+        Set<String> normalizedServices = CalendarFilterUtils.normalizeFilterValues(services);
+        Set<String> normalizedRegions = CalendarFilterUtils.normalizeFilterValues(regions);
+        Set<Status> normalizedStatuses = CalendarFilterUtils.normalizeStatuses(statuses);
+        Map<String, List<AvailabilityDTO>> availabilityByConsultant = availabilityRepository.findAll().stream()
+                .filter(a -> consultantId == null || (a.getConsultant() != null && consultantId.equals(a.getConsultant().getConsultantId())))
+                .filter(a -> a.getConsultant() != null && a.getConsultant().getConsultantId() != null)
+                .filter(a -> {
+                    if (a.getDate() == null) return false;
+                    if (fromDate != null && a.getDate().isBefore(fromDate)) return false;
+                    if (toDate != null && a.getDate().isAfter(toDate)) return false;
+                    return true;
+                })
+                .collect(toMap(
+                        a -> a.getConsultant().getConsultantId(),
+                        a -> new ArrayList<>(List.of(a)),
+                        (left, right) -> {
+                            left.addAll(right);
+                            return left;
+                        }
+                ))
+                .entrySet()
+                .stream()
+                .collect(toMap(
+                        Map.Entry::getKey,
+                        e -> e.getValue().stream()
+                                .sorted(Comparator
+                                        .comparing(AvailabilityEntity::getDate)
+                                        .thenComparing(AvailabilityEntity::getStartTime)
+                                        .thenComparing(AvailabilityEntity::getAvailabilityId))
+                                .map(availabilityMapper::toDto)
+                                .toList()
+                ));
+
+        Map<String, List<AssignmentEntity>> grouped = assignmentRepository.findAll().stream()
+                .filter(a -> consultantId == null || (a.getConsultant() != null && consultantId.equals(a.getConsultant().getConsultantId())))
+                .filter(a -> CalendarFilterUtils.matchesService(a, normalizedServices))
+                .filter(a -> CalendarFilterUtils.matchesRegion(a, normalizedRegions))
+                .filter(a -> CalendarFilterUtils.matchesStatus(a, normalizedStatuses))
+                .filter(a -> CalendarFilterUtils.matchesDateRange(a, fromDate, toDate))
+                .collect(toMap(
+                        a -> a.getConsultant().getConsultantId() + "|" + a.getCustomer().getCustomerId(),
+                        a -> new ArrayList<>(List.of(a)),
+                        (left, right) -> {
+                            left.addAll(right);
+                            return left;
+                        },
+                        LinkedHashMap::new
+                ));
+
+        List<CalendarConsultantRowDTO> rows = grouped.values().stream()
+                .map(assignments -> {
+                    List<AssignmentDTO> assignmentDtos = assignments.stream()
+                            .sorted(Comparator
+                                    .comparing(AssignmentEntity::getDate)
+                                    .thenComparing(AssignmentEntity::getStartTime)
+                                    .thenComparing(AssignmentEntity::getAssignmentId))
+                            .map(assignmentMapper::toDto)
+                            .toList();
+
+                    AssignmentEntity first = assignments.get(0);
+                    String consultantKey = first.getConsultant().getConsultantId();
+                    return new CalendarConsultantRowDTO(
+                            consultantMapper.toDto(first.getConsultant()),
+                            customerMapper.toDto(first.getCustomer()),
+                            assignmentDtos,
+                            availabilityByConsultant.getOrDefault(consultantKey, List.of())
+                    );
+                })
+                .toList();
+
+        return new CalendarConsultantDTO(rows);
     }
 
     @Tool(

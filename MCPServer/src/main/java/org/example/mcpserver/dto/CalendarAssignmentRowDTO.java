@@ -1,3 +1,3 @@
 package org.example.mcpserver.dto;
-public record CalendarAssignmentRowDTO(Assignment assignment, Consultant consultant, Customer customer) {
+public record CalendarAssignmentRowDTO(AssignmentDTO assignment, ConsultantDTO consultant, CustomerDTO customer) {
 }
