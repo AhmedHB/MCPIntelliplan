@@ -1,5 +1,9 @@
 # IntelliPlan Chat
 
+## Skärmbild
+
+![IntelliPlan Chat UI](docs/chat-ui.png)
+
 IntelliPlan Chat är en React-applikation för chatprompt-baserad planering och tilldelning av konsulter till tjänster/uppdrag.
 
 Applikationen skickar användarens meddelande till backend-endpointen `POST /api/chat` och presenterar svaret i ett chatgränssnitt.
