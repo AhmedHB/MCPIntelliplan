@@ -19,6 +19,8 @@ import org.springframework.ai.chat.client.advisor.vectorstore.VectorStoreChatMem
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
@@ -30,30 +32,39 @@ public class ChatService {
     private static final Logger LOG =
             LoggerFactory.getLogger(ChatService.class);
 
+    private final ToolCallbackProvider assignmentTools;
+    private final ToolCallbackProvider organizationTools;
+    private final ToolCallbackProvider consultantTools;
+    private final ToolCallbackProvider mcpTools;
+
     // Build once, reuse
     private final ChatClient routingClient;      // NO TOOLS, WITH MEMORY
     private final ChatClient toolClient;         // WITH TOOLS, WITH MEMORY (för fria svar om du vill)
-    private final ChatClient strictToolClient;   // WITH TOOLS, NO MEMORY, NO global system
+
+    @Value("${app.model.chat.options.top_k}")
+    private int top_k;
+
+
 
     public ChatService(ChatClient.Builder chatClientBuilder,
+                       @Qualifier("mcpToolCallbacks") ToolCallbackProvider mcpTools,
+                       @Qualifier("assignmentTools") ToolCallbackProvider assignmentTools,
+                       @Qualifier("organizationTools") ToolCallbackProvider organizationTools,
+                       @Qualifier("consultantTools") ToolCallbackProvider consultantTools,
                        VectorStore vectorStore) {
+
+        this.mcpTools = mcpTools;
+        this.assignmentTools = assignmentTools;
+        this.organizationTools = organizationTools;
+        this.consultantTools = consultantTools;
 
         var memoryAdvisor = VectorStoreChatMemoryAdvisor.builder(vectorStore).build();
 
-        // Routing client (NO TOOLS explicitly) – buildern kan redan ha tools,
-        // men routingpromptar bör ändå inte kräva tool-anrop.
         this.routingClient = chatClientBuilder
                 .defaultAdvisors(memoryAdvisor)
                 .build();
 
-        // Tool client (WITH MEMORY) – BYGGER PÅ builderns redan-registrerade tools
-        this.toolClient = chatClientBuilder
-                .defaultAdvisors(memoryAdvisor)
-                .build();
-
-        // STRICT tool client (NO MEMORY) – BYGGER PÅ builderns redan-registrerade tools
-        this.strictToolClient = chatClientBuilder
-                .build();
+        this.toolClient = chatClientBuilder.build(); // <-- inga tools här
     }
 
     /*
@@ -99,7 +110,8 @@ public class ChatService {
 
     public String chat(ChatRequest request) {
         String input = request.message();
-        String conversationId = request.conversationId() == null || request.conversationId().isBlank()
+
+        String conversationId = (request.conversationId() == null || request.conversationId().isBlank())
                 ? ChatMemory.DEFAULT_CONVERSATION_ID
                 : request.conversationId();
 
@@ -110,25 +122,13 @@ public class ChatService {
             LOG.info("User Input: {}", input);
             LOG.info("ConversationId: {}", conversationId);
 
+            // ROUTING: memory + global language (no tools needed here)
             ChatClient requestRoutingClient = routingClient
                     .mutate()
                     .defaultSystem(languageSystemInstruction)
                     .defaultAdvisors(spec -> spec
                             .param(ChatMemory.CONVERSATION_ID, conversationId)
-                            .param(VectorStoreChatMemoryAdvisor.TOP_K, 10))
-                    .build();
-
-            // STRICT: no memory advisor + no global language instruction
-            ChatClient requestStrictToolClient = strictToolClient
-                    .mutate()
-                    .build();
-
-            ChatClient requestToolClient = toolClient
-                    .mutate()
-                    .defaultSystem(languageSystemInstruction)
-                    .defaultAdvisors(spec -> spec
-                            .param(ChatMemory.CONVERSATION_ID, conversationId)
-                            .param(VectorStoreChatMemoryAdvisor.TOP_K, 10))
+                            .param(VectorStoreChatMemoryAdvisor.TOP_K, top_k))
                     .build();
 
             // Routing
@@ -136,6 +136,29 @@ public class ChatService {
             String routeKey = routingWorkflow.route(input);
 
             LOG.info("Route: {}", routeKey);
+
+            // Pick tool allowlist by route (fallback to ALL MCP tools)
+            ToolCallbackProvider domainTools = switch (routeKey) {
+                case "assignment" -> assignmentTools;                 // assignment_*
+                case "organization" -> organizationTools;             // region_*, organization_*
+                case "consultant" -> consultantTools;                 // consultant_*, availability_*
+                default -> mcpTools;                                  // service/customer/other => all MCP tools
+            };
+
+            // STRICT domain tools (no memory advisors) - TOOLS SET EXACTLY ONCE
+            ChatClient requestStrictDomainToolClient = toolClient.mutate()
+                    .defaultSystem(languageSystemInstruction)
+                    .defaultToolCallbacks(domainTools)
+                    .build();
+
+            // Domain tools + memory (only if you want free-form answers with memory)
+            ChatClient requestDomainToolClientWithMemory = toolClient.mutate()
+                    .defaultSystem(languageSystemInstruction)
+                    .defaultToolCallbacks(domainTools)
+                    .defaultAdvisors(spec -> spec
+                            .param(ChatMemory.CONVERSATION_ID, conversationId)
+                            .param(VectorStoreChatMemoryAdvisor.TOP_K, top_k))
+                    .build();
 
             if ("assignment".equals(routeKey)) {
                 AssignmentIntentClassifier classifier = new AssignmentIntentClassifier(requestRoutingClient);
@@ -145,29 +168,29 @@ public class ChatService {
 
                 String answer = switch (cmd.action()) {
                     case "COUNT_BY_STATUS" ->
-                            new AssignmentCountByStatusWorkflow(requestToolClient).run(cmd.status());
+                            new AssignmentCountByStatusWorkflow(requestStrictDomainToolClient).run(cmd.status());
 
                     case "FIND_BY_STATUS" ->
-                            new AssignmentFindByStatusWorkflow(requestStrictToolClient).run(cmd.status());
+                            new AssignmentFindByStatusWorkflow(requestStrictDomainToolClient).run(cmd.status());
 
                     case "COUNT_BY_DATE" ->
-                            new AssignmentCountByDateWorkflow(requestStrictToolClient)
+                            new AssignmentCountByDateWorkflow(requestStrictDomainToolClient)
                                     .run(cmd.date().format(DateTimeFormatter.ISO_LOCAL_DATE));
 
                     case "FIND_BY_DATE" ->
-                            new AssignmentFindByDateWorkflow(requestStrictToolClient)
+                            new AssignmentFindByDateWorkflow(requestStrictDomainToolClient)
                                     .run(cmd.date().format(DateTimeFormatter.ISO_LOCAL_DATE));
 
                     case "CONSULTANTS_ON_DATE" ->
-                            new AssignmentFindConsultantsByDateWorkflow(requestStrictToolClient)
+                            new AssignmentFindConsultantsByDateWorkflow(requestStrictDomainToolClient)
                                     .run(cmd.date().format(DateTimeFormatter.ISO_LOCAL_DATE));
 
                     case "WORKING_ON_DATE" ->
-                            new ConsultantWorkingOnDateWorkflow(requestStrictToolClient)
+                            new ConsultantWorkingOnDateWorkflow(requestStrictDomainToolClient)
                                     .run(cmd.name(), cmd.date().format(DateTimeFormatter.ISO_LOCAL_DATE));
 
                     case "SUGGEST_CONSULTANTS" ->
-                            new AssignmentSuggestConsultantsbyCodeWorkflow(requestStrictToolClient)
+                            new AssignmentSuggestConsultantsbyCodeWorkflow(requestStrictDomainToolClient)
                                     .run(cmd.assignmentId(), 5);
 
                     default -> {
@@ -175,7 +198,7 @@ public class ChatService {
                                 routeKey,
                                 RoutingWorkflow.ROUTES.get("other")
                         );
-                        yield new DomainWorkflow(requestStrictToolClient).run(domainPrompt, input);
+                        yield new DomainWorkflow(requestStrictDomainToolClient).run(domainPrompt, input);
                     }
                 };
 
@@ -191,20 +214,21 @@ public class ChatService {
 
                 String answer = switch (cmd.action()) {
                     case "LIST_ALL" ->
-                            new ConsultantListWorkflow(requestStrictToolClient).run();
+                            new ConsultantListWorkflow(requestStrictDomainToolClient).run();
 
                     case "GET_BY_ID" ->
-                            new ConsultantDetailByIdWorkflow(requestStrictToolClient).run(cmd.consultantId());
+                            new ConsultantDetailByIdWorkflow(requestStrictDomainToolClient).run(cmd.consultantId());
 
                     case "GET_BY_NAME" ->
-                            new ConsultantDetailByNameWorkflow(requestStrictToolClient).run(cmd.firstName(), cmd.lastName());
+                            new ConsultantDetailByNameWorkflow(requestStrictDomainToolClient)
+                                    .run(cmd.firstName(), cmd.lastName());
 
                     case "FIND_AVAILABLE_BY_DATE" ->
-                            new ConsultantAvailableByDateWorkflow(requestStrictToolClient)
+                            new ConsultantAvailableByDateWorkflow(requestStrictDomainToolClient)
                                     .run(cmd.date().format(DateTimeFormatter.ISO_LOCAL_DATE));
 
                     case "LIST_SICK_BY_DATE" ->
-                            new ConsultantSickByDateWorkflow(requestStrictToolClient)
+                            new ConsultantSickByDateWorkflow(requestStrictDomainToolClient)
                                     .run(cmd.date().format(DateTimeFormatter.ISO_LOCAL_DATE));
 
                     default -> {
@@ -212,68 +236,7 @@ public class ChatService {
                                 routeKey,
                                 RoutingWorkflow.ROUTES.get("other")
                         );
-                        yield new DomainWorkflow(requestStrictToolClient).run(domainPrompt, input);
-                    }
-                };
-
-                LOG.info("Answer:\n{}", answer);
-                return answer;
-            }
-
-            if ("service".equals(routeKey)) {
-                ServiceIntentClassifier classifier = new ServiceIntentClassifier(requestRoutingClient);
-                var cmd = classifier.classify(input);
-
-                LOG.info("Service Action: {}", cmd.action());
-
-                String answer = switch (cmd.action()) {
-                    case "GET_SERVICES_BY_ID" ->
-                            new ConsultantServicesByIdWorkflow(requestStrictToolClient).run(cmd.consultantId());
-
-                    case "GET_SERVICES_BY_NAME" ->
-                            new ConsultantServicesByNameWorkflow(requestStrictToolClient).run(cmd.firstName(), cmd.lastName());
-
-                    case "FIND_CONSULTANTS_BY_SERVICES" ->
-                            new ConsultantsByServicesWorkflow(requestStrictToolClient).run(cmd.services(), cmd.matchMode());
-
-                    case "LIST_ALL_SERVICES" ->
-                            new ServiceListWorkflow(requestStrictToolClient).run();
-
-                    default -> {
-                        String domainPrompt = RoutingWorkflow.ROUTES.getOrDefault(
-                                routeKey,
-                                RoutingWorkflow.ROUTES.get("other")
-                        );
-                        yield new DomainWorkflow(requestStrictToolClient).run(domainPrompt, input);
-                    }
-                };
-
-                LOG.info("Answer:\n{}", answer);
-                return answer;
-            }
-
-            if ("customer".equals(routeKey)) {
-                CustomerIntentClassifier classifier = new CustomerIntentClassifier(requestRoutingClient);
-                var cmd = classifier.classify(input);
-
-                LOG.info("Customer Action: {}", cmd.action());
-
-                String answer = switch (cmd.action()) {
-                    case "GET_BY_ID" ->
-                            new CustomerGetByIdWorkflow(requestStrictToolClient).run(cmd.customerId());
-
-                    case "SEARCH" ->
-                            new CustomerSearchWorkflow(requestStrictToolClient).run(cmd.customerName(), cmd.region(), cmd.riskProfile());
-
-                    case "LIST_ALL" ->
-                            new CustomerListWorkflow(requestStrictToolClient).run();
-
-                    default -> {
-                        String domainPrompt = RoutingWorkflow.ROUTES.getOrDefault(
-                                routeKey,
-                                RoutingWorkflow.ROUTES.get("other")
-                        );
-                        yield new DomainWorkflow(requestStrictToolClient).run(domainPrompt, input);
+                        yield new DomainWorkflow(requestStrictDomainToolClient).run(domainPrompt, input);
                     }
                 };
 
@@ -289,36 +252,36 @@ public class ChatService {
 
                 String answer = switch (cmd.action()) {
                     case "GET_REGION_BY_CONSULTANT_ID" ->
-                            new OrganizationGetRegionByConsultantIdWorkflow(requestStrictToolClient)
+                            new OrganizationGetRegionByConsultantIdWorkflow(requestStrictDomainToolClient)
                                     .run(cmd.consultantId());
 
                     case "GET_REGION_BY_CONSULTANT_NAME" ->
-                            new OrganizationGetRegionByConsultantNameWorkflow(requestStrictToolClient)
+                            new OrganizationGetRegionByConsultantNameWorkflow(requestStrictDomainToolClient)
                                     .run(cmd.firstName(), cmd.lastName());
 
                     case "LIST_CONSULTANTS_BY_REGION" ->
-                            new OrganizationListConsultantsByRegionWorkflow(requestStrictToolClient)
+                            new OrganizationListConsultantsByRegionWorkflow(requestStrictDomainToolClient)
                                     .run(cmd.region());
 
                     case "COUNT_CONSULTANTS_BY_REGION" ->
-                            new OrganizationCountConsultantsByRegionWorkflow(requestStrictToolClient)
+                            new OrganizationCountConsultantsByRegionWorkflow(requestStrictDomainToolClient)
                                     .run(cmd.region());
 
                     case "organization_count_consultants_by_region" ->
-                            new OrganizationListRegionsWithCountsWorkflow(requestStrictToolClient).run();
+                            new OrganizationListRegionsWithCountsWorkflow(requestStrictDomainToolClient).run();
 
                     case "GET_REGION_WITH_MOST_CONSULTANTS" ->
-                            new OrganizationGetRegionWithMostConsultantsWorkflow(requestStrictToolClient).run();
+                            new OrganizationGetRegionWithMostConsultantsWorkflow(requestStrictDomainToolClient).run();
 
                     case "LIST_REGIONS" ->
-                            new OrganizationListRegionsWorkflow(requestStrictToolClient).run();
+                            new OrganizationListRegionsWorkflow(requestStrictDomainToolClient).run();
 
                     default -> {
                         String domainPrompt = RoutingWorkflow.ROUTES.getOrDefault(
                                 routeKey,
                                 RoutingWorkflow.ROUTES.get("other")
                         );
-                        yield new DomainWorkflow(requestStrictToolClient).run(domainPrompt, input);
+                        yield new DomainWorkflow(requestStrictDomainToolClient).run(domainPrompt, input);
                     }
                 };
 
@@ -326,12 +289,13 @@ public class ChatService {
                 return answer;
             }
 
-            // Other domains
+            // Other domains: keep your old behavior (memory + free-form)
             String domainPrompt = RoutingWorkflow.ROUTES.getOrDefault(
                     routeKey,
                     RoutingWorkflow.ROUTES.get("other")
             );
-            String answer = new DomainWorkflow(requestToolClient).run(domainPrompt, input);
+
+            String answer = new DomainWorkflow(requestDomainToolClientWithMemory).run(domainPrompt, input);
 
             LOG.info("Answer:\n{}", answer);
             return answer;

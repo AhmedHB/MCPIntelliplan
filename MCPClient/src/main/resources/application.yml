@@ -12,17 +12,20 @@ spring:
       chat:
         options:
           model: gpt-4o-mini
-          temperature: 0.7
+          temperature: 0
           max-tokens: 5000
+          #top-k: 10
 
     ollama:
       base-url: http://localhost:11434
       chat:
         options:
           #model: llama3.1:8b
-          model: qwen2.5:14b
+          model: qwen2.5:7b
+          #model: qwen2.5:14b
           temperature: 0
           max-tokens: 5000
+          #top-k: 3
 
     #Remote
  #   ollama:

@@ -10,3 +10,9 @@ spring:
       milvus:
         embedding-dimension: 768
         collection-name: chat_memory_store_local_nomic_768_v2
+
+app:
+  model:
+    chat:
+      options:
+        top_k : 3
