@@ -21,6 +21,8 @@ import org.example.mcpserver.service.util.CalendarFilterUtils;
 import org.example.mcpserver.service.util.CsvTokenUtils;
 import org.example.mcpserver.service.util.TimeRangeUtils;
 import org.example.mcpserver.service.validation.ValidationUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +38,9 @@ import static java.util.stream.Collectors.toSet;
 @Service
 @Transactional
 public class AssignmentService {
+    private static final Logger LOG =
+            LoggerFactory.getLogger(AssignmentService.class);
+
 
     private final AssignmentRepository assignmentRepository;
     private final CustomerRepository customerRepository;
@@ -154,7 +159,9 @@ public class AssignmentService {
     @Transactional(readOnly = true)
     public long countByStatus(String status) {
         String s = ValidationUtils.requireNonBlank(status, "status");
-        return assignmentRepository.countByStatusIgnoreCase(s);
+        long count = assignmentRepository.countByStatusIgnoreCase(s);
+        //LOG.info("Counting assignments with status: {} amount is {}", s, count);
+        return count;
     }
 
     // ================================
